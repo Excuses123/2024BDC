@@ -25,12 +25,11 @@ class DictToClass(object):
             self.__dict__.update(_obj)
 
 
-def save_model(args, model, epoch, step, batch, save_path):
+def save_model(args, model, epoch, step, save_path):
     model_dict = {
         "args": {k: v for k, v in args.__dict__.items()},
         "epoch": epoch,
-        "step": step,
-        "sample_batch": batch
+        "step": step
     }
     if isinstance(model, (torch.nn.parallel.DataParallel,
                           torch.nn.parallel.DistributedDataParallel)):

@@ -34,35 +34,10 @@ import os
 import time
 import torch
 import argparse
-import numpy as np
-from data_helper import create_dataloaders
+from data_helper import create_dataloaders, load_test_data
 from model import ITransformer
 from torch.nn.parallel import DataParallel
 from utils import todevice, setup_seed, save_model
-
-
-def load_eval_data(args):
-    temp = np.load(os.path.join(args.data_path, "temp_lookback.npy"))  # (N, L, S, 1)
-    wind = np.load(os.path.join(args.data_path, "wind_lookback.npy"))  # (N, L, S, 1)
-    era5 = np.load(os.path.join(args.data_path, "cenn_data.npy")).repeat(3, axis=1)  # (N, L, 4, 9, S)
-    era5 = era5.reshape((era5.shape[0], era5.shape[1], 4 * 9, era5.shape[-1])).transpose([0, 1, 3, 2])  # [N, L, S, 36]
-
-    N, L, S, _ = temp.shape  # (N, L, S, 1) -> [71, 168, 60, 1]
-
-    data = np.concatenate([temp, wind, era5], axis=-1).transpose([0, 2, 1, 3])  # (N, S, L, 38)
-
-    label_temp = np.load(
-        os.path.join(args.data_path, "temp_lookback_label.npy")).transpose([0, 2, 1, 3]).reshape((N * S, -1, 1))
-    label_wind = np.load(
-        os.path.join(args.data_path, "wind_lookback_label.npy")).transpose([0, 2, 1, 3]).reshape((N * S, -1, 1))
-
-    data = {
-        'x': torch.FloatTensor(data.reshape((N * S, L, -1))),  # (N * S, L, 38)
-        'label_temp': torch.FloatTensor(label_temp),  # (N * S, P, 1)
-        'label_wind': torch.FloatTensor(label_wind)  # (N * S, P, 1)
-    }
-
-    return data
 
 
 def validate(args, model, eval_data):
@@ -87,7 +62,7 @@ def train(args):
     train_dataloader = create_dataloaders(args)
 
     if args.do_eval:
-        eval_data = load_eval_data(args)
+        eval_data = load_test_data(args.data_path, label=True)
     else:
         eval_data = None
 
@@ -133,11 +108,11 @@ def train(args):
                     best_wind_mse = eval_wind_mse
                     save_step = step
                     print(f"保存模型: step {save_step} mse {best_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
-                    save_model(args, model, epoch, step, batch, f'{args.model_path}/model.bin')
+                    save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
         if not args.do_eval:
             # 非验证模式，每个epoch保存一次
-            save_model(args, model, epoch, step, batch, f'{args.model_path}/model.bin')
+            save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
 
 # 参数

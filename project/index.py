@@ -2,8 +2,12 @@ import os
 import torch
 import numpy as np
 from model import ITransformer
-from utils import DictToClass
+from utils import DictToClass, todevice
+from data_helper import load_test_data
 from sklearn.metrics import mean_squared_error
+
+S = 60
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def invoke(inputs):
@@ -13,19 +17,12 @@ def invoke(inputs):
     checkpoint = torch.load(f"{model_path}/model.bin", map_location='cpu')
     args = DictToClass(checkpoint['args'])
 
-    model = ITransformer(args).cuda()
+    model = ITransformer(args).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
 
-    temp = np.load(os.path.join(inputs, "temp_lookback.npy"))  # (N, L, S, 1)
-    wind = np.load(os.path.join(inputs, "wind_lookback.npy"))  # (N, L, S, 1)
-    era5 = np.load(os.path.join(inputs, "cenn_data.npy")).repeat(3, axis=1)  # (N, L, 4, 9, S)
-    era5 = era5.reshape((era5.shape[0], era5.shape[1], 4 * 9, era5.shape[-1])).transpose([0, 1, 3, 2])  # [N, L, S, 36]
-
-    N, L, S, _ = temp.shape  # (N, L, S, 1) -> [71, 168, 60, 1]
-
-    data = np.concatenate([temp, wind, era5], axis=-1).transpose([0, 2, 1, 3])  # (N, S, L, 38)
-    data = {'x': torch.FloatTensor(data.reshape((N * S, L, -1))).cuda()}  # (N * S, L, 38)
+    data = load_test_data(inputs)
+    data = todevice(data, device)
 
     pred_temp, pred_wind = model(data, inference=True)  # [batch, pred_len, 1]
 
@@ -34,8 +31,8 @@ def invoke(inputs):
 
     P = pred_temp.shape[1]
 
-    pred_temp = pred_temp.reshape(N, S, P, 1).transpose(0, 2, 1, 3)  # (N, P, S, 1)
-    pred_wind = pred_wind.reshape(N, S, P, 1).transpose(0, 2, 1, 3)  # (N, P, S, 1)
+    pred_temp = pred_temp.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
+    pred_wind = pred_wind.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
     # pred_wind[pred_wind < 0] = 0  # 风速不为负，负数置0
 
     np.save(os.path.join(save_path, "temp_predict.npy"), pred_temp)
@@ -47,19 +44,12 @@ def invoke_eval(inputs):
     checkpoint = torch.load(f"{model_path}/model.bin", map_location='cpu')
     args = DictToClass(checkpoint['args'])
 
-    model = ITransformer(args).cuda()
+    model = ITransformer(args).to(device)
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
 
-    temp = np.load(os.path.join(inputs, "temp_lookback.npy"))  # (N, L, S, 1)
-    wind = np.load(os.path.join(inputs, "wind_lookback.npy"))  # (N, L, S, 1)
-    era5 = np.load(os.path.join(inputs, "cenn_data.npy")).repeat(3, axis=1)  # (N, L, 4, 9, S)
-    era5 = era5.reshape((era5.shape[0], era5.shape[1], 4 * 9, era5.shape[-1])).transpose([0, 1, 3, 2])  # [N, L, S, 36]
-
-    N, L, S, _ = temp.shape  # (N, L, S, 1) -> [71, 168, 60, 1]
-
-    data = np.concatenate([temp, wind, era5], axis=-1).transpose([0, 2, 1, 3])  # (N, S, L, 38)
-    data = {'x': torch.FloatTensor(data.reshape((N * S, L, -1))).cuda()}  # (N * S, L, 38)
+    data = load_test_data(inputs)
+    data = todevice(data, device)
 
     pred_temp, pred_wind = model(data, inference=True)  # [batch, pred_len, 1]
 
@@ -68,8 +58,8 @@ def invoke_eval(inputs):
 
     P = pred_temp.shape[1]
 
-    pred_temp = pred_temp.reshape(N, S, P, 1).transpose(0, 2, 1, 3)  # (N, P, S, 1)
-    pred_wind = pred_wind.reshape(N, S, P, 1).transpose(0, 2, 1, 3)  # (N, P, S, 1)
+    pred_temp = pred_temp.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
+    pred_wind = pred_wind.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
     # pred_wind[pred_wind < 0] = 0  # 风速不为负，负数置0
 
     label_temp = np.load(os.path.join(inputs, "temp_lookback_label.npy"))
