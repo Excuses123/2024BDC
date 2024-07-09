@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from math import sqrt
+from embedding import ITEmbedding
 
 
 class ITransformer(nn.Module):
@@ -15,7 +16,7 @@ class ITransformer(nn.Module):
         super(ITransformer, self).__init__()
         self.pred_len = args.pred_len
         # Embedding
-        self.enc_embedding = DataEmbedding(args.seq_len, args.d_model, args.dropout)
+        self.enc_embedding = ITEmbedding(args.seq_len, args.d_model, args.dropout)
         # Encoder
         self.encoder = Encoder(args, norm_layer=torch.nn.LayerNorm(args.d_model))
         # Decoder
@@ -52,21 +53,6 @@ class ITransformer(nn.Module):
             wind_loss = F.mse_loss(pred_wind, label_wind)
             loss = temp_loss / label_temp.var().detach() * 10 + wind_loss / label_wind.var().detach()
             return loss, temp_loss, wind_loss
-
-
-class DataEmbedding(nn.Module):
-    def __init__(self, c_in, d_model, dropout=0.1):
-        super(DataEmbedding, self).__init__()
-        self.value_embedding = nn.Linear(c_in, d_model)
-        self.dropout = nn.Dropout(p=dropout)
-
-    def forward(self, x, x_mark=None):
-        x = x.permute(0, 2, 1)  # [batch, feat, time]
-        if x_mark is None:
-            x = self.value_embedding(x)  # [batch, feat, dim]
-        else:
-            x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1))
-        return self.dropout(x)
 
 
 class TriangularCausalMask(object):

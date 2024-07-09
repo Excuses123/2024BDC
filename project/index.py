@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-from model import ITransformer
+from itransfomer import ITransformer
 from utils import DictToClass, todevice
 from data_helper import load_test_data
 from sklearn.metrics import mean_squared_error

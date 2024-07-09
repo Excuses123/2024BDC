@@ -1,13 +1,20 @@
 """
 训练集：
     2019年1月 - 2020年12月的1小时间隔
-    temp.npy: (17544, 3850, 1)
-    wind.npy: (17544, 3850, 1)
+    temp.npy: (17544, 3850, 1)   范围：(-82.7, 52.0)
+     1、两米高度的温度值（℃）
+    wind.npy: (17544, 3850, 1)   范围：(0.0, 78.8)
+     1、两米高度的风速的绝对值（m/s）
 
     2019年1月 - 2020年12月的3小时间隔
-    global_data.npy: (5848, 4, 9, 3850)
+    global_data.npy: (5848, 4, 9, 3850)         范围：(-74.1657775878906, 106719.5)
+     1、十米高度的矢量纬向风速10U，正方向为东方（m/s）  范围：(-14.8721923828125, 20.9344482421875)
+     2、十米高度的矢量经向风速10V，正方向为北方（m/s）  范围：(-15.188034057617188, 14.637161254882812)
+     3、两米高度的温度值T2M（℃）                    范围：(-37.32951965332029, 39.07477722167971)
+     4、均一海平面气压MSL（Pa）                     范围：(96975.6875, 105129.1875)
 
 测试集：
+    2021年1月 - 2022年12月的3小时间隔
     temp_lookback.npy: (71, 168, x, 1)
     wind_lookback.npy: (71, 168, x, 1)
 
@@ -35,7 +42,7 @@ import time
 import torch
 import argparse
 from data_helper import create_dataloaders, load_test_data
-from model import ITransformer
+from itransfomer import ITransformer
 from torch.nn.parallel import DataParallel
 from utils import todevice, setup_seed, save_model
 

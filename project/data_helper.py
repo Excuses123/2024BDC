@@ -31,11 +31,13 @@ class MyDataset(Dataset):
         return self.window_num * self.station_num
 
     def _load_data(self):
-        self.temp = np.load(os.path.join(self.args.data_path, "temp.npy")).squeeze(-1)  # [T, Station]
-        self.wind = np.load(os.path.join(self.args.data_path, "wind.npy")).squeeze(-1)  # [T, Station]
+        self.temp = np.load(os.path.join(self.args.data_path, "temp.npy")).squeeze(-1)  # [T, S]
+        self.wind = np.load(os.path.join(self.args.data_path, "wind.npy")).squeeze(-1)  # [T, S]
         self.time_num, self.station_num = self.temp.shape
-        self.era5 = np.load(os.path.join(self.args.data_path, "global_data.npy")).repeat(3, axis=0)[:self.time_num]
-        self.era5 = self.era5.reshape((self.era5.shape[0], 4 * 9, self.era5.shape[-1]))  # [T, 36, Station]
+        # self.era5 = np.load(os.path.join(self.args.data_path, "global_data.npy")).repeat(3, axis=0)  # [T,4,9,S]
+        self.era5 = np.load(
+            os.path.join(self.args.data_path, "global_data.npy")
+        ).transpose([0, 2, 1, 3]).reshape((self.time_num, 3, 4, self.station_num)).transpose([0, 2, 1, 3])  # [T,4,3,S]
 
     @staticmethod
     def seq_pad(sequence, max_len):
@@ -56,13 +58,13 @@ class MyDataset(Dataset):
 
         temp_x = self.temp[start: end, station: station + 1]   # [seq_len, 1]
         wind_x = self.wind[start: end, station: station + 1]   # [seq_len, 1]
-        era5_x = self.era5[start: end, :, station: station + 1].squeeze()  # [seq_len, 36]
+        era5_x = self.era5[start: end, :, :, station: station + 1].squeeze()  # [seq_len, 4, 3]
 
         x = feature_engineer(temp_x, wind_x, era5_x)  # [seq_len, -1]
 
         temp_y = self.temp[end: end + self.args.pred_len, station: station + 1]  # [pred_len, 1]
         wind_y = self.wind[end: end + self.args.pred_len, station: station + 1]  # [pred_len, 1]
-        era5_y = self.era5[end: end + self.args.pred_len, :, station: station + 1].squeeze()  # [pred_len, 36]
+        era5_y = self.era5[end: end + self.args.pred_len, :, :, station: station + 1].squeeze()  # [pred_len, 4, 3]
 
         y = feature_engineer(temp_y, wind_y, era5_y)  # [pred_len, -1]
 
@@ -78,38 +80,52 @@ def feature_engineer(temp, wind, era5):
     """
     temp: [L, 1] | [N, L, 1]
     wind: [L, 1] | [N, L, 1]
-    era5: [L, 1] | [N, L, 1]
+    era5: [L, 4, 3] | [N, L, 4, 3]
     """
-    def check_shape(arr):
-        if len(arr.shape) == 2:
-            return arr[None, :, :]
-        elif len(temp.shape) == 3:
-            return arr
-        else:
-            raise Exception(f"arr shape: {arr.shape} do not meet the requirements!")
-
-    temp = check_shape(temp)
-    wind = check_shape(wind)
-    era5 = check_shape(era5)
+    if len(temp.shape) == 2:
+        temp = temp[None, :, :]     # [N, L, 1]
+    if len(wind.shape) == 2:
+        wind = wind[None, :, :]     # [N, L, 1]
+    if len(era5.shape) == 3:
+        era5 = era5[None, :, :, :]  # [N, L, 4, 9]
 
     N, L, _ = temp.shape
 
+    # temp, wind 衍生特征
     temp_diff = np.diff(temp, axis=1, prepend=temp[:, :1, :])  # (N, L, 1)
     wind_diff = np.diff(wind, axis=1, prepend=wind[:, :1, :])  # (N, L, 1)
-
-    # L长度不一样，处理特征需注意，不能穿越
-    # temp_mean = temp.mean(axis=1)[:, :, None].repeat(L, axis=1)
-    # wind_mean = wind.mean(axis=1)[:, :, None].repeat(L, axis=1)
 
     temp_lag1 = np.concatenate([np.zeros_like(temp[:, :1, :]), temp[:, :-1, :]], axis=1)
     wind_lag1 = np.concatenate([np.zeros_like(wind[:, :1, :]), wind[:, :-1, :]], axis=1)
 
     temp_wind = temp - wind
-
     temp_abs = np.abs(temp)
 
-    feat = np.concatenate([temp, wind, temp_diff, wind_diff, era5,
-                           temp_wind, temp_abs, temp_lag1, wind_lag1], axis=-1)  # (N, L, -1)
+    # era5 衍生特征
+    """
+    1、十米高度的矢量纬向风速10U，正方向为东方（m/s）  范围：(-14.8721923828125, 20.9344482421875)
+    2、十米高度的矢量经向风速10V，正方向为北方（m/s）  范围：(-15.188034057617188, 14.637161254882812)
+    3、两米高度的温度值T2M（℃）                    范围：(-37.32951965332029, 39.07477722167971)
+    4、均一海平面气压MSL（Pa）                     范围：(96975.6875, 105129.1875)
+    """
+    era5_1 = np.abs(era5[:, :, 0, :])  # [N, L, 3]
+    era5_2 = np.abs(era5[:, :, 1, :])  # [N, L, 3]
+    era5_3 = np.abs(era5[:, :, 2, :])  # [N, L, 3]
+    era5_4 = np.log(era5[:, :, 3, :])  # [N, L, 3]
+
+    # era5_1_var = era5_1.std(axis=-1)[:, :, None]
+    # era5_2_var = era5_2.std(axis=-1)[:, :, None]
+    # era5_3_var = era5_3.std(axis=-1)[:, :, None]
+    # era5_4_var = era5_4.std(axis=-1)[:, :, None]
+
+    # temp, wind 与 era5 交叉特征
+    # wind_era5_1_abs = wind - era5_1_abs[:, :, 4:5]
+    # wind_era5_2_abs = wind - era5_2_abs[:, :, 4:5]
+    # temp_era5_3 = temp - era5_3[:, :, 4:5]
+    # temp_era5_4_mean = temp / era5_4_mean
+
+    feat = np.concatenate([temp, wind, temp_wind, temp_abs, temp_diff, wind_diff, temp_lag1, wind_lag1,
+                           era5_1, era5_2, era5_3, era5_3, era5_4], axis=-1)  # (N, L, -1)
 
     if feat.shape[0] == 1:
         feat = feat.squeeze(axis=0)
@@ -120,14 +136,14 @@ def feature_engineer(temp, wind, era5):
 def load_test_data(data_path, label=False):
     temp = np.load(os.path.join(data_path, "temp_lookback.npy"))  # (N, L, S, 1)
     wind = np.load(os.path.join(data_path, "wind_lookback.npy"))  # (N, L, S, 1)
+    # era5 = np.load(os.path.join(data_path, "cenn_data.npy")).repeat(3, axis=1)  # (N, L, 4, 9, S)
     era5 = np.load(os.path.join(data_path, "cenn_data.npy"))  # (N, L/3, 4, 9, S)
 
     N, L, S, _ = temp.shape  # (N, L, S, 1) -> [71, 168, 60, 1]
 
     temp = temp.transpose([0, 2, 1, 3]).reshape((N * S, L, -1))  # [N * S, L, 1]
     wind = wind.transpose([0, 2, 1, 3]).reshape((N * S, L, -1))  # [N * S, L, 1]
-    era5 = era5.repeat(3, axis=1).reshape((N, L, 4 * 9, S)).transpose([0, 1, 3, 2])  # [N, L, S, 36]
-    era5 = era5.transpose([0, 2, 1, 3]).reshape((N * S, L, -1))  # [N * S, L, 36]
+    era5 = era5.transpose([0, 4, 1, 3, 2]).reshape((N * S, L, 3, 4)).transpose([0, 1, 3, 2])  # [N * S, L, 4, 3]
 
     x = feature_engineer(temp, wind, era5)  # [N * S, L, -1]
 
