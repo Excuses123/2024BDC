@@ -42,15 +42,14 @@ import time
 import torch
 import argparse
 from data_helper import create_dataloaders, load_test_data
-from itransfomer import ITransformer
+from itransformer import ITransformer
 from torch.nn.parallel import DataParallel
 from utils import todevice, setup_seed, save_model
 
 
-def validate(args, model, eval_data):
+def validate(model, eval_data):
     model.eval()
     with torch.no_grad():
-        eval_data = todevice(eval_data, args.device)
         pred_temp, pred_wind = model(eval_data, inference=True)   # (N * S, P, 1)
 
         temp_var = eval_data['label_temp'].var()
@@ -70,6 +69,7 @@ def train(args):
 
     if args.do_eval:
         eval_data = load_test_data(args.data_path, label=True)
+        eval_data = todevice(eval_data, args.device)
     else:
         eval_data = None
 
@@ -106,20 +106,23 @@ def train(args):
                       f"temp_loss {temp_loss.mean():.4f}, wind_loss {wind_loss.mean():.4f}, 耗时 {cost:.3f}s")
 
             if args.do_eval and step % args.eval_step == 0:
-                eval_mse, eval_temp_mse, eval_wind_mse = validate(args, model, eval_data)
+                eval_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data)
                 print(f"\n验证: Epoch {epoch} Step {step}, mse {eval_mse:.4f}, temp_mse {eval_temp_mse:.4f}, wind_mse {eval_wind_mse:.4f}\n")
 
                 if eval_mse < best_mse:
                     best_mse = eval_mse
                     best_temp_mse = eval_temp_mse
                     best_wind_mse = eval_wind_mse
-                    save_step = step
-                    print(f"保存模型: step {save_step} mse {best_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
+                    best_step = step
+                    print(f"保存模型: step {best_step} mse {best_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
                     save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
         if not args.do_eval:
             # 非验证模式，每个epoch保存一次
             save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
+
+    if args.do_eval:
+        print(f"best_step {best_step} best_mse {best_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}")
 
 
 # 参数
@@ -129,16 +132,23 @@ def cmd_args():
     parser.add_argument("--seed", type=int, default=1024, help="random seed.")
 
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
-    parser.add_argument('--label_len', type=int, default=1, help='label长度')
     parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
 
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--d_model', type=int, default=168, help='dim')
-    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
-    parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
     parser.add_argument('--hidden_size', type=int, default=128, help='dimension of fcn')
+    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
+    parser.add_argument('--num_layers', type=int, default=2, help='num of encoder layers')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
     parser.add_argument('--output_attention', type=int, default=0, help='output_attention')
+
+    # for pathformer
+    parser.add_argument('--num_nodes', type=int, default=21)
+    parser.add_argument('--num_experts_list', type=list, default=[4, 4, 4])
+    parser.add_argument('--patch_size_list', nargs='+', type=int, default=[16,12,8,32,12,8,6,4,8,6,4,2])
+    parser.add_argument('--k', type=int, default=2, help='choose the Top K patch size at the every layer')
+    parser.add_argument('--residual_connection', type=int, default=0)
+    parser.add_argument('--revin', type=int, default=1, help='whether to apply RevIN')
 
     # ========================= Learning Configs ==========================
     parser.add_argument('--max_epochs', type=int, default=10, help='训练轮数')
