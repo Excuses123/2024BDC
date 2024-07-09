@@ -47,11 +47,9 @@ class ITransformer(nn.Module):
         if inference:
             return pred_temp, pred_wind
         else:
-            label_temp = inputs['y'][:, -self.pred_len:, 0:1]
-            label_wind = inputs['y'][:, -self.pred_len:, 1:2]
-            temp_loss = F.mse_loss(pred_temp, label_temp)
-            wind_loss = F.mse_loss(pred_wind, label_wind)
-            loss = temp_loss / label_temp.var().detach() * 10 + wind_loss / label_wind.var().detach()
+            temp_loss = F.mse_loss(pred_temp, inputs['label_temp'])
+            wind_loss = F.mse_loss(pred_wind, inputs['label_wind'])
+            loss = temp_loss / inputs['label_temp'].var().detach() * 10 + wind_loss / inputs['label_wind'].var().detach()
             return loss, temp_loss, wind_loss
 
 
@@ -164,7 +162,7 @@ class EncoderLayer(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, args, conv_layers=None, norm_layer=None):
         super(Encoder, self).__init__()
-        self.attn_layers = nn.ModuleList([EncoderLayer(args) for _ in range(args.e_layers)])
+        self.attn_layers = nn.ModuleList([EncoderLayer(args) for _ in range(args.num_layers)])
         self.conv_layers = nn.ModuleList(conv_layers) if conv_layers is not None else None
         self.norm = norm_layer
 
