@@ -104,9 +104,9 @@ def cmd_args():
     parser.add_argument('--output_attention', type=int, default=0, help='output_attention')
 
     # for pathformer
-    parser.add_argument('--num_nodes', type=int, default=21)
+    parser.add_argument('--num_nodes', type=int, default=18)
     parser.add_argument('--num_experts_list', type=list, default=[4, 4, 4])
-    parser.add_argument('--patch_size_list', nargs='+', type=int, default=[16,12,8,32,12,8,6,4,8,6,4,2])
+    parser.add_argument('--patch_size_list', nargs='+', type=int, default=[[16,12,8],[32,12,8,6,4],[8,6,4,2]])
     parser.add_argument('--k', type=int, default=2, help='choose the Top K patch size at the every layer')
     parser.add_argument('--residual_connection', type=int, default=0)
     parser.add_argument('--revin', type=int, default=1, help='whether to apply RevIN')

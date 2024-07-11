@@ -58,5 +58,6 @@ best_step 8000 best_mse 0.9490 temp_mse 7.2833 wind_mse 4.3203
 best_step 8000 best_mse 0.9823 temp_mse 7.6457 wind_mse 4.3939
 
 17.--num_layers=2,--n_heads=4,--learning_rate=1e-4
+best_step 14000 best_mse 0.9532 temp_mse 7.3265 wind_mse 4.3322
 
 18.--d_model=256

@@ -13,7 +13,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def invoke(inputs):
     save_path = '/home/mw/project'
 
-    model_path = "./checkpoint"
+    model_path = "./checkpoint/online"
     checkpoint = torch.load(f"{model_path}/model.bin", map_location='cpu')
     args = DictToClass(checkpoint['args'])
 

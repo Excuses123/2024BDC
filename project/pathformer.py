@@ -25,7 +25,7 @@ class PathFormer(nn.Module):
         self.start_fc = nn.Linear(in_features=1, out_features=self.args.d_model)
         self.AMS_lists = nn.ModuleList()
 
-        for num in range(self.args.layer_nums):
+        for num in range(self.args.num_layers):
             self.AMS_lists.append(
                 AMS(self.args.seq_len, self.args.seq_len, self.args.num_experts_list[num], self.args.device,
                     k=self.args.k, num_nodes=self.args.num_nodes, patch_size=self.args.patch_size_list[num],
@@ -33,14 +33,15 @@ class PathFormer(nn.Module):
                     layer_number=num + 1, residual_connection=self.args.residual_connection
                     )
             )
-        self.projections = nn.Sequential(nn.Linear(self.args.seq_len * self.args.d_model, self.args.pre_len))
+        self.projections = nn.Sequential(nn.Linear(self.args.seq_len * self.args.d_model, self.args.pred_len))
 
-    def forward(self, x):
+    def forward(self, inputs):
         balance_loss = 0
+        x = inputs['x']  # [batch, time, feat]
         # norm
         if self.args.revin:
             x = self.revin_layer(x, 'norm')
-        out = self.start_fc(x.unsqueeze(-1))
+        out = self.start_fc(x.unsqueeze(-1))  # [batch, time, feat, dim]
 
         batch_size = x.shape[0]
 
@@ -315,7 +316,7 @@ class AMS(nn.Module):
         return prob
 
     def seasonality_and_trend_decompose(self, x):
-        x = x[:, :, :, 0]
+        x = x[:, :, :, 0]   # [batch, time, feat]
         _, trend = self.trend_model(x)
         seasonality, _ = self.seasonality_model(x)
         return x + seasonality + trend
@@ -348,6 +349,7 @@ class AMS(nn.Module):
         return gates, load
 
     def forward(self, x, loss_coef=1e-2):
+        # x: [batch, time, feat, dim]
         new_x = self.seasonality_and_trend_decompose(x)
 
         # multi-scale router
@@ -416,7 +418,6 @@ class Transformer_Layer(nn.Module):
                                 nn.Linear(self.hidden_size, self.d_model, bias=True))
 
     def forward(self, x):
-
         new_x  = x
         batch_size = x.size(0)
         intra_out_concat = None
@@ -703,7 +704,7 @@ class RevIN(nn.Module):
         if self.affine:
             self._init_params()
 
-    def forward(self, x, mode:str):
+    def forward(self, x, mode: str):
         if mode == 'norm':
             self._get_statistics(x)
             x = self._normalize(x)
