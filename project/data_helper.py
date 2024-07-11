@@ -39,17 +39,6 @@ class MyDataset(Dataset):
             os.path.join(self.args.data_path, "global_data.npy")
         ).transpose([0, 2, 1, 3]).reshape((self.time_num, 3, 4, self.station_num)).transpose([0, 2, 1, 3])  # [T,4,3,S]
 
-    @staticmethod
-    def seq_pad(sequence, max_len):
-        if sequence is not None and isinstance(sequence, np.ndarray) and list(sequence) != [0]:
-            sequence = list(sequence)
-            seq_len = min(len(sequence), max_len)
-            sequence = sequence[-max_len:] + [0] * (max_len - seq_len)
-        else:
-            sequence = [0] * max_len
-            seq_len = 0
-        return sequence, seq_len
-
     def __getitem__(self, idx):
         station = idx // self.window_num
         start = idx % self.window_num
@@ -64,13 +53,11 @@ class MyDataset(Dataset):
 
         temp_y = self.temp[end: end + self.args.pred_len, station: station + 1]  # [pred_len, 1]
         wind_y = self.wind[end: end + self.args.pred_len, station: station + 1]  # [pred_len, 1]
-        era5_y = self.era5[end: end + self.args.pred_len, :, :, station: station + 1].squeeze()  # [pred_len, 4, 3]
-
-        y = feature_engineer(temp_y, wind_y, era5_y)  # [pred_len, -1]
 
         data = dict(
             x=torch.FloatTensor(x),
-            y=torch.FloatTensor(y),
+            label_temp=torch.FloatTensor(temp_y),
+            label_wind=torch.FloatTensor(wind_y)
         )
 
         return data
@@ -87,19 +74,19 @@ def feature_engineer(temp, wind, era5):
     if len(wind.shape) == 2:
         wind = wind[None, :, :]     # [N, L, 1]
     if len(era5.shape) == 3:
-        era5 = era5[None, :, :, :]  # [N, L, 4, 9]
+        era5 = era5[None, :, :, :]  # [N, L, 4, 3]
 
     N, L, _ = temp.shape
 
     # temp, wind 衍生特征
-    temp_diff = np.diff(temp, axis=1, prepend=temp[:, :1, :])  # (N, L, 1)
-    wind_diff = np.diff(wind, axis=1, prepend=wind[:, :1, :])  # (N, L, 1)
+    # temp_diff = np.diff(temp, axis=1, prepend=temp[:, :1, :])  # (N, L, 1)
+    # wind_diff = np.diff(wind, axis=1, prepend=wind[:, :1, :])  # (N, L, 1)
 
     temp_lag1 = np.concatenate([np.zeros_like(temp[:, :1, :]), temp[:, :-1, :]], axis=1)
     wind_lag1 = np.concatenate([np.zeros_like(wind[:, :1, :]), wind[:, :-1, :]], axis=1)
 
-    temp_wind = temp - wind
     temp_abs = np.abs(temp)
+    temp_wind = temp - wind
 
     # era5 衍生特征
     """
@@ -108,10 +95,7 @@ def feature_engineer(temp, wind, era5):
     3、两米高度的温度值T2M（℃）                    范围：(-37.32951965332029, 39.07477722167971)
     4、均一海平面气压MSL（Pa）                     范围：(96975.6875, 105129.1875)
     """
-    era5_1 = np.abs(era5[:, :, 0, :])  # [N, L, 3]
-    era5_2 = np.abs(era5[:, :, 1, :])  # [N, L, 3]
-    era5_3 = np.abs(era5[:, :, 2, :])  # [N, L, 3]
-    era5_4 = np.log(era5[:, :, 3, :])  # [N, L, 3]
+    era5_flatten = era5.reshape((era5.shape[0], era5.shape[1], -1))  # [N, L, 4 * 3]
 
     # era5_1_var = era5_1.std(axis=-1)[:, :, None]
     # era5_2_var = era5_2.std(axis=-1)[:, :, None]
@@ -124,8 +108,7 @@ def feature_engineer(temp, wind, era5):
     # temp_era5_3 = temp - era5_3[:, :, 4:5]
     # temp_era5_4_mean = temp / era5_4_mean
 
-    feat = np.concatenate([temp, wind, temp_wind, temp_abs, temp_diff, wind_diff, temp_lag1, wind_lag1,
-                           era5_1, era5_2, era5_3, era5_3, era5_4], axis=-1)  # (N, L, -1)
+    feat = np.concatenate([temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind], axis=-1)  # (N, L, -1)
 
     if feat.shape[0] == 1:
         feat = feat.squeeze(axis=0)

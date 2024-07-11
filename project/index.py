@@ -33,7 +33,7 @@ def invoke(inputs):
 
     pred_temp = pred_temp.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
     pred_wind = pred_wind.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
-    # pred_wind[pred_wind < 0] = 0  # 风速不为负，负数置0
+    # pred_wind = np.abs(pred_wind)  # 风速不为负
 
     np.save(os.path.join(save_path, "temp_predict.npy"), pred_temp)
     np.save(os.path.join(save_path, "wind_predict.npy"), pred_wind)
@@ -60,7 +60,7 @@ def invoke_eval(inputs):
 
     pred_temp = pred_temp.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
     pred_wind = pred_wind.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
-    # pred_wind[pred_wind < 0] = 0  # 风速不为负，负数置0
+    # pred_wind = np.abs(pred_wind)  # 风速不为负
 
     label_temp = np.load(os.path.join(inputs, "temp_lookback_label.npy"))
     label_wind = np.load(os.path.join(inputs, "wind_lookback_label.npy"))

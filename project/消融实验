@@ -1,0 +1,62 @@
+"""
+--gpu: 0,2
+--batch_size=10240 \
+--learning_rate=5e-4 \
+--max_epochs=3 \
+--num_workers=4 \
+--num_layers=2 \
+--n_heads=4 \
+--d_model=168 \
+--hidden_size=128 \
+"""
+1.[temp, wind]
+best_step 14000 best_mse 0.9834 temp_mse 7.6547 wind_mse 4.3995
+
+2.[temp, wind, era5_flatten]
+best_step 12000 best_mse 0.9605 temp_mse 7.3550 wind_mse 4.3850
+
+3.[temp, wind, era5_1-3_abs, era5_4_log]
+best_step 10000 best_mse 0.9729 temp_mse 7.5379 wind_mse 4.3776
+
+4.[temp, wind, era5_1-3_abs.mean, era5_4_log.mean]
+best_step 11000 best_mse 0.9666 temp_mse 7.5494 wind_mse 4.3053
+
+5.[temp, wind, era5_flatten, temp_diff, wind_diff]
+best_step 10000 best_mse 0.9628 temp_mse 7.3198 wind_mse 4.4336
+
+6.[temp, wind, era5_flatten, temp_diff, wind_diff, temp_lag1, wind_lag1]
+best_step 11000 best_mse 0.9492 temp_mse 7.2752 wind_mse 4.3285
+
+7.[temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind]
+best_step 11000 best_mse 0.9452 temp_mse 7.2673 wind_mse 4.2934
+
+8.[temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind, temp_lag2, wind_lag2]
+best_step 13000 best_mse 0.9481 temp_mse 7.2201 wind_mse 4.3574
+
+9.--hidden_size=168 & [temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind]
+best_step 8000 best_mse 0.9406 temp_mse 7.1860 wind_mse 4.3057
+
+10.--hidden_size=168 & [temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind, temp_lag2, wind_lag2]
+best_step 5000 best_mse 0.9444 temp_mse 7.1938 wind_mse 4.3393
+
+11.--hidden_size=256
+best_step 7000 best_mse 0.9451 temp_mse 7.2308 wind_mse 4.3191
+
+12.--hidden_size=64
+best_step 10000 best_mse 0.9490 temp_mse 7.2679 wind_mse 4.3314
+
+13.--num_layers=3,--n_heads=4
+best_step 4000 best_mse 0.9494 temp_mse 7.3039 wind_mse 4.3093
+
+14.--num_layers=4,--n_heads=4
+best_step 3000 best_mse 0.9494 temp_mse 7.2727 wind_mse 4.3327
+
+15.--num_layers=2,--n_heads=6
+best_step 8000 best_mse 0.9490 temp_mse 7.2833 wind_mse 4.3203
+
+16.--num_layers=2,--n_heads=4,--learning_rate=5e-3
+best_step 8000 best_mse 0.9823 temp_mse 7.6457 wind_mse 4.3939
+
+17.--num_layers=2,--n_heads=4,--learning_rate=1e-4
+
+18.--d_model=256

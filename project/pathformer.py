@@ -2,49 +2,43 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import init
+import torch.fft as fft
+import numpy as np
 from torch.distributions.normal import Normal
 from functools import reduce
-import torch.fft as fft
 from einops import rearrange, reduce, repeat
-from embedding import *
+from embedding import positional_encoding
 
 
 class PathFormer(nn.Module):
-    def __init__(self, configs):
+    """
+    Paper link: https://arxiv.org/abs/2402.05956
+    Github: https://github.com/decisionintelligence/pathformer
+    """
+
+    def __init__(self, args):
         super(PathFormer, self).__init__()
-        self.layer_nums = configs.layer_nums  # 设置pathway的层数
-        self.num_nodes = configs.num_nodes
-        self.pre_len = configs.pred_len
-        self.seq_len = configs.seq_len
-        self.k = configs.k
-        self.num_experts_list = configs.num_experts_list
-        self.patch_size_list = configs.patch_size_list
-        self.d_model = configs.d_model
-        self.d_ff = configs.d_ff
-        self.residual_connection = configs.residual_connection
-        self.revin = configs.revin
-        if self.revin:
-            self.revin_layer = RevIN(num_features=configs.num_nodes, affine=False, subtract_last=False)
+        self.args = args
+        if self.args.revin:
+            self.revin_layer = RevIN(num_features=args.num_nodes, affine=False, subtract_last=False)
 
-        self.start_fc = nn.Linear(in_features=1, out_features=self.d_model)
+        self.start_fc = nn.Linear(in_features=1, out_features=self.args.d_model)
         self.AMS_lists = nn.ModuleList()
-        self.device = torch.device('cuda:{}'.format(configs.gpu))
 
-        for num in range(self.layer_nums):
+        for num in range(self.args.layer_nums):
             self.AMS_lists.append(
-                AMS(self.seq_len, self.seq_len, self.num_experts_list[num], self.device, k=self.k,
-                    num_nodes=self.num_nodes, patch_size=self.patch_size_list[num], noisy_gating=True,
-                    d_model=self.d_model, d_ff=self.d_ff, layer_number=num + 1, residual_connection=self.residual_connection))
-        self.projections = nn.Sequential(
-            nn.Linear(self.seq_len * self.d_model, self.pre_len)
-        )
+                AMS(self.args.seq_len, self.args.seq_len, self.args.num_experts_list[num], self.args.device,
+                    k=self.args.k, num_nodes=self.args.num_nodes, patch_size=self.args.patch_size_list[num],
+                    noisy_gating=True, d_model=self.args.d_model, hidden_size=self.args.hidden_size,
+                    layer_number=num + 1, residual_connection=self.args.residual_connection
+                    )
+            )
+        self.projections = nn.Sequential(nn.Linear(self.args.seq_len * self.args.d_model, self.args.pre_len))
 
     def forward(self, x):
-
         balance_loss = 0
         # norm
-        if self.revin:
+        if self.args.revin:
             x = self.revin_layer(x, 'norm')
         out = self.start_fc(x.unsqueeze(-1))
 
@@ -54,7 +48,7 @@ class PathFormer(nn.Module):
             out, aux_loss = layer(out)
             balance_loss += aux_loss
 
-        out = out.permute(0, 2, 1, 3).reshape(batch_size, self.num_nodes, -1)
+        out = out.permute(0, 2, 1, 3).reshape(batch_size, self.args.num_nodes, -1)
         out = self.projections(out).transpose(2, 1)
 
         # denorm
@@ -67,7 +61,6 @@ class PathFormer(nn.Module):
 class SparseDispatcher(object):
     def __init__(self, num_experts, gates):
         """Create a SparseDispatcher."""
-
         self._gates = gates
         self._num_experts = num_experts
 
@@ -99,6 +92,7 @@ class SparseDispatcher(object):
         combined[combined == 0] = np.finfo(float).eps
         # back to log space
         return combined.log()
+
     def expert_to_gates(self):
         # split nonzero gates for each expert
         return torch.split(self._nonzero_gates, self._part_sizes, dim=0)
@@ -108,9 +102,9 @@ class MLP(nn.Module):
     def __init__(self, input_size, output_size):
         super(MLP, self).__init__()
         self.fc = nn.Conv2d(in_channels=input_size,
-                             out_channels=output_size,
-                             kernel_size=(1, 1),
-                             bias=True)
+                            out_channels=output_size,
+                            kernel_size=(1, 1),
+                            bias=True)
 
     def forward(self, x):
         out = self.fc(x)
@@ -121,7 +115,6 @@ class moving_avg(nn.Module):
     """
     Moving average block to highlight the trend of time series
     """
-
     def __init__(self, kernel_size, stride):
         super(moving_avg, self).__init__()
         self.kernel_size = kernel_size
@@ -141,7 +134,6 @@ class series_decomp(nn.Module):
     """
     Series decomposition block
     """
-
     def __init__(self, kernel_size):
         super(series_decomp, self).__init__()
         self.moving_avg = moving_avg(kernel_size, stride=1)
@@ -156,7 +148,6 @@ class series_decomp_multi(nn.Module):
     """
     Series decomposition block
     """
-
     def __init__(self, kernel_size):
         super(series_decomp_multi, self).__init__()
         self.moving_avg = [moving_avg(kernel, stride=1) for kernel in kernel_size]
@@ -264,7 +255,8 @@ class FourierLayer(nn.Module):
 
 
 class AMS(nn.Module):
-    def __init__(self, input_size, output_size, num_experts, device, num_nodes=1, d_model=32, d_ff=64, dynamic=False,
+
+    def __init__(self, input_size, output_size, num_experts, device, num_nodes=1, d_model=32, hidden_size=64, dynamic=False,
                  patch_size=[8, 6, 4, 2], noisy_gating=True, k=4, layer_number=1, residual_connection=1):
         super(AMS, self).__init__()
         self.num_experts = num_experts
@@ -280,9 +272,9 @@ class AMS(nn.Module):
         self.MLPs = nn.ModuleList()
         for patch in patch_size:
             patch_nums = int(input_size / patch)
-            self.experts.append(Transformer_Layer(device=device, d_model=d_model, d_ff=d_ff,
-                                      dynamic=dynamic, num_nodes=num_nodes, patch_nums=patch_nums,
-                                      patch_size=patch, factorized=True, layer_number=layer_number))
+            self.experts.append(Transformer_Layer(device=device, d_model=d_model, hidden_size=hidden_size,
+                                                  dynamic=dynamic, num_nodes=num_nodes, patch_nums=patch_nums,
+                                                  patch_size=patch, factorized=True, layer_number=layer_number))
 
         self.w_gate = nn.Parameter(torch.zeros(input_size, num_experts), requires_grad=True)
         self.w_noise = nn.Parameter(torch.zeros(input_size, num_experts), requires_grad=True)
@@ -358,7 +350,7 @@ class AMS(nn.Module):
     def forward(self, x, loss_coef=1e-2):
         new_x = self.seasonality_and_trend_decompose(x)
 
-        #multi-scale router
+        # multi-scale router
         gates, load = self.noisy_top_k_gating(new_x, self.training)
         # calculate balance loss
         importance = gates.sum(0)
@@ -374,7 +366,8 @@ class AMS(nn.Module):
 
 
 class Transformer_Layer(nn.Module):
-    def __init__(self, device, d_model, d_ff, num_nodes, patch_nums, patch_size, dynamic, factorized, layer_number):
+
+    def __init__(self, device, d_model, hidden_size, num_nodes, patch_nums, patch_size, dynamic, factorized, layer_number):
         super(Transformer_Layer, self).__init__()
         self.device = device
         self.d_model = d_model
@@ -384,11 +377,9 @@ class Transformer_Layer(nn.Module):
         self.patch_size = patch_size
         self.layer_number = layer_number
 
-        ##intra_patch_attention
-        self.intra_embeddings = nn.Parameter(torch.rand(self.patch_nums, 1, 1, self.num_nodes, 16),
-                                                requires_grad=True)
-        self.embeddings_generator = nn.ModuleList([nn.Sequential(*[
-            nn.Linear(16, self.d_model)]) for _ in range(self.patch_nums)])
+        # intra_patch_attention
+        self.intra_embeddings = nn.Parameter(torch.rand(self.patch_nums, 1, 1, self.num_nodes, 16), requires_grad=True)
+        self.embeddings_generator = nn.ModuleList([nn.Sequential(*[nn.Linear(16, self.d_model)]) for _ in range(self.patch_nums)])
         self.intra_d_model = self.d_model
         self.intra_patch_attention = Intra_Patch_Attention(self.intra_d_model, factorized=factorized)
         self.weights_generator_distinct = WeightGenerator(self.intra_d_model, self.intra_d_model, mem_dim=16, num_nodes=num_nodes,
@@ -397,33 +388,32 @@ class Transformer_Layer(nn.Module):
                                                         factorized=False, number_of_weights=2)
         self.intra_Linear = nn.Linear(self.patch_nums, self.patch_nums*self.patch_size)
 
-        ##inter_patch_attention
+        # inter_patch_attention
         self.stride = patch_size
         # patch_num = int((context_window - cut_size) / self.stride + 1)
 
         self.inter_d_model = self.d_model * self.patch_size
-        ##inter_embedding
+        # inter_embedding
         self.emb_linear = nn.Linear(self.inter_d_model, self.inter_d_model)
         # Positional encoding
         self.W_pos = positional_encoding(pe='zeros', learn_pe=True, q_len=self.patch_nums, d_model=self.inter_d_model)
         n_heads = self.d_model
         d_k = self.inter_d_model // n_heads
         d_v = self.inter_d_model // n_heads
-        self.inter_patch_attention = Inter_Patch_Attention(self.inter_d_model, self.inter_d_model, n_heads, d_k, d_v, attn_dropout=0,
-                                          proj_dropout=0.1, res_attention=False)
+        self.inter_patch_attention = Inter_Patch_Attention(self.inter_d_model, self.inter_d_model, n_heads, d_k, d_v,
+                                                           attn_dropout=0, proj_dropout=0.1, res_attention=False)
 
-
-        ##Normalization
+        # Normalization
         self.norm_attn = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(self.d_model), Transpose(1,2))
         self.norm_ffn = nn.Sequential(Transpose(1,2), nn.BatchNorm1d(self.d_model), Transpose(1,2))
 
-        ##FFN
-        self.d_ff = d_ff
+        # FFN
+        self.hidden_size = hidden_size
         self.dropout = nn.Dropout(0.1)
-        self.ff = nn.Sequential(nn.Linear(self.d_model, self.d_ff, bias=True),
+        self.ff = nn.Sequential(nn.Linear(self.d_model, self.hidden_size, bias=True),
                                 nn.GELU(),
                                 nn.Dropout(0.2),
-                                nn.Linear(self.d_ff, self.d_model, bias=True))
+                                nn.Linear(self.hidden_size, self.d_model, bias=True))
 
     def forward(self, x):
 
@@ -434,7 +424,7 @@ class Transformer_Layer(nn.Module):
         weights_shared, biases_shared = self.weights_generator_shared()
         weights_distinct, biases_distinct = self.weights_generator_distinct()
 
-        ####intra Attention#####
+        # intra Attention
         for i in range(self.patch_nums):
             t = x[:, i * self.patch_size:(i + 1) * self.patch_size, :, :]
 
@@ -443,7 +433,7 @@ class Transformer_Layer(nn.Module):
             out, attention = self.intra_patch_attention(intra_emb, t, t, weights_distinct, biases_distinct, weights_shared,
                                                biases_shared)
 
-            if intra_out_concat == None:
+            if intra_out_concat is None:
                 intra_out_concat = out
 
             else:
@@ -453,9 +443,7 @@ class Transformer_Layer(nn.Module):
         intra_out_concat = self.intra_Linear(intra_out_concat)
         intra_out_concat = intra_out_concat.permute(0,3,2,1)
 
-
-
-        ####inter Attention######
+        # inter Attention
         x = x.unfold(dimension=1, size=self.patch_size, step=self.stride)  # [b x patch_num x nvar x dim x patch_len]
         x = x.permute(0, 2, 1, 3, 4)  # [b x nvar x patch_num x dim x patch_len ]
         b, nvar, patch_num, dim, patch_len = x.shape
@@ -472,13 +460,14 @@ class Transformer_Layer(nn.Module):
         inter_out = torch.reshape(inter_out, (b, self.patch_size*self.patch_nums, nvar, self.d_model)) #[b, temporal, nvar, dim]
 
         out = new_x + intra_out_concat + inter_out
-        ##FFN
+        # FFN
         out = self.dropout(out)
         out = self.ff(out) + out
         return out, attention
 
 
 class CustomLinear(nn.Module):
+
     def __init__(self, factorized):
         super(CustomLinear, self).__init__()
         self.factorized = factorized
@@ -491,6 +480,7 @@ class CustomLinear(nn.Module):
 
 
 class Intra_Patch_Attention(nn.Module):
+
     def __init__(self, d_model, factorized):
         super(Intra_Patch_Attention, self).__init__()
         self.head = 2
@@ -514,8 +504,6 @@ class Intra_Patch_Attention(nn.Module):
         key = key.permute((0, 2, 3, 1))
         value = value.permute((0, 2, 1, 3))
 
-
-
         attention = torch.matmul(query, key)
         attention /= (self.head_size ** 0.5)
 
@@ -535,6 +523,7 @@ class Intra_Patch_Attention(nn.Module):
 
 
 class Inter_Patch_Attention(nn.Module):
+
     def __init__(self, d_model, out_dim, n_heads, d_k=None, d_v=None, res_attention=False, attn_dropout=0.,
                  proj_dropout=0., qkv_bias=True, lsa=False):
         super().__init__()
@@ -583,10 +572,10 @@ class Inter_Patch_Attention(nn.Module):
 
 
 class ScaledDotProductAttention(nn.Module):
-    r"""Scaled Dot-Product Attention module (Attention is all you need by Vaswani et al., 2017) with optional residual attention from previous layer
-    (Realformer: Transformer likes residual attention by He et al, 2020) and locality self sttention (Vision Transformer for Small-Size Datasets
-    by Lee et al, 2021)"""
-
+    """
+    Scaled Dot-Product Attention module (Attention is all you need by Vaswani et al., 2017) with optional residual attention from previous layer
+    (Realformer: Transformer likes residual attention by He et al, 2020) and locality self sttention (Vision Transformer for Small-Size Datasets by Lee et al, 2021)
+    """
     def __init__(self, d_model, n_heads, attn_dropout=0., res_attention=False, lsa=False):
         super().__init__()
         self.attn_dropout = nn.Dropout(attn_dropout)
@@ -625,6 +614,7 @@ class ScaledDotProductAttention(nn.Module):
 
 
 class WeightGenerator(nn.Module):
+
     def __init__(self, in_dim, out_dim, mem_dim, num_nodes, factorized, number_of_weights=4):
         super(WeightGenerator, self).__init__()
         #print('FACTORIZED {}'.format(factorized))
@@ -665,13 +655,13 @@ class WeightGenerator(nn.Module):
         list_params = [self.P, self.Q, self.B] if self.factorized else [self.P]
         for weight_list in list_params:
             for weight in weight_list:
-                init.kaiming_uniform_(weight, a=math.sqrt(5))
+                nn.init.kaiming_uniform_(weight, a=math.sqrt(5))
 
         if not self.factorized:
             for i in range(self.number_of_weights):
-                fan_in, _ = init._calculate_fan_in_and_fan_out(self.P[i])
+                fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.P[i])
                 bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
-                init.uniform_(self.B[i], -bound, bound)
+                nn.init.uniform_(self.B[i], -bound, bound)
 
     def forward(self):
         if self.factorized:
@@ -685,16 +675,20 @@ class WeightGenerator(nn.Module):
 
 
 class Transpose(nn.Module):
+
     def __init__(self, *dims, contiguous=False):
         super().__init__()
         self.dims, self.contiguous = dims, contiguous
 
     def forward(self, x):
-        if self.contiguous: return x.transpose(*self.dims).contiguous()
-        else: return x.transpose(*self.dims)
+        if self.contiguous:
+            return x.transpose(*self.dims).contiguous()
+        else:
+            return x.transpose(*self.dims)
 
 
 class RevIN(nn.Module):
+
     def __init__(self, num_features: int, eps=1e-5, affine=True, subtract_last=False):
         """
         :param num_features: the number of features or channels
@@ -752,3 +746,4 @@ class RevIN(nn.Module):
         else:
             x = x + self.mean
         return x
+
