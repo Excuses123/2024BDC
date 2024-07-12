@@ -89,8 +89,13 @@ def train(args):
         for batch in train_dataloader:
             batch = todevice(batch, args.device)
             optimizer.zero_grad()
-            loss, temp_loss, wind_loss = model(batch)
-            loss = loss.mean()
+            all_loss, temp_loss, wind_loss = model(batch)
+            if args.pred_var == 'all':
+                loss = all_loss.mean()
+            elif args.pred_var == 'temp':
+                loss = temp_loss.mean()
+            else:
+                loss = wind_loss.mean()
             loss.backward()
             optimizer.step()
 
@@ -102,19 +107,27 @@ def train(args):
                 time_per_step = (now_time - start_time) / max(1, step)
                 remaining_time = time_per_step * (num_total_steps - step)
                 remaining_time = time.strftime('%H:%M:%S', time.gmtime(remaining_time))
-                print(f"训练: Epoch {epoch} step {step} eta {remaining_time}: mse_loss {loss:.4f}, "
+                print(f"训练: Epoch {epoch} step {step} eta {remaining_time}: loss {loss:.4f}, all_loss {all_loss.mean():.4f}, "
                       f"temp_loss {temp_loss.mean():.4f}, wind_loss {wind_loss.mean():.4f}, 耗时 {cost:.3f}s")
 
             if args.do_eval and step % args.eval_step == 0:
-                eval_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data)
-                print(f"\n验证: Epoch {epoch} Step {step}, mse {eval_mse:.4f}, temp_mse {eval_temp_mse:.4f}, wind_mse {eval_wind_mse:.4f}\n")
+                eval_all_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data)
+                print(f"\n验证: Epoch {epoch} Step {step}, all_mse {eval_all_mse:.4f}, temp_mse {eval_temp_mse:.4f}, wind_mse {eval_wind_mse:.4f}\n")
+
+                if args.pred_var == 'all':
+                    eval_mse = eval_all_mse
+                elif args.pred_var == 'temp':
+                    eval_mse = eval_temp_mse
+                else:
+                    eval_mse = eval_wind_mse
 
                 if eval_mse < best_mse:
                     best_mse = eval_mse
+                    best_all_mse = eval_all_mse
                     best_temp_mse = eval_temp_mse
                     best_wind_mse = eval_wind_mse
                     best_step = step
-                    print(f"保存模型: step {best_step} mse {best_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
+                    print(f"保存模型: step {best_step} mse {best_mse:.4f} all_mse {best_all_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
                     save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
         if not args.do_eval:
@@ -122,7 +135,7 @@ def train(args):
             save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
     if args.do_eval:
-        print(f"best_step {best_step} best_mse {best_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}")
+        print(f"best_step {best_step} best_mse {best_mse:.4f} all_mse {best_all_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}")
 
 
 # 参数
@@ -133,6 +146,7 @@ def cmd_args():
 
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
     parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
+    parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
 
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--d_model', type=int, default=168, help='dim')
@@ -141,14 +155,6 @@ def cmd_args():
     parser.add_argument('--num_layers', type=int, default=2, help='num of encoder layers')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
     parser.add_argument('--output_attention', type=int, default=0, help='output_attention')
-
-    # for pathformer
-    parser.add_argument('--num_nodes', type=int, default=21)
-    parser.add_argument('--num_experts_list', type=list, default=[4, 4, 4])
-    parser.add_argument('--patch_size_list', nargs='+', type=int, default=[16,12,8,32,12,8,6,4,8,6,4,2])
-    parser.add_argument('--k', type=int, default=2, help='choose the Top K patch size at the every layer')
-    parser.add_argument('--residual_connection', type=int, default=0)
-    parser.add_argument('--revin', type=int, default=1, help='whether to apply RevIN')
 
     # ========================= Learning Configs ==========================
     parser.add_argument('--max_epochs', type=int, default=10, help='训练轮数')
@@ -178,6 +184,7 @@ def parse_args():
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args.n_gpu = torch.cuda.device_count()
 
+    args.model_path = os.path.join(args.model_path, args.pred_var)
     os.makedirs(args.model_path, exist_ok=True)
 
     return args

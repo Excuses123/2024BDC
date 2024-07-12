@@ -33,8 +33,11 @@ best_step 11000 best_mse 0.9452 temp_mse 7.2673 wind_mse 4.2934
 8.[temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind, temp_lag2, wind_lag2]
 best_step 13000 best_mse 0.9481 temp_mse 7.2201 wind_mse 4.3574
 
-9.--hidden_size=168 & [temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind]
+*9.--hidden_size=168 & [temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind]
 best_step 8000 best_mse 0.9406 temp_mse 7.1860 wind_mse 4.3057
+
+*9.--hidden_size=168 & [temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind, temp_cumavg, wind_cumavg]
+best_step 14000 best_mse 0.9430 temp_mse 7.1822 wind_mse 4.3330
 
 10.--hidden_size=168 & [temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind, temp_lag2, wind_lag2]
 best_step 5000 best_mse 0.9444 temp_mse 7.1938 wind_mse 4.3393
@@ -60,4 +63,9 @@ best_step 8000 best_mse 0.9823 temp_mse 7.6457 wind_mse 4.3939
 17.--num_layers=2,--n_heads=4,--learning_rate=1e-4
 best_step 14000 best_mse 0.9532 temp_mse 7.3265 wind_mse 4.3322
 
-18.--d_model=256
+18.--hidden_size=168,--d_model=256
+best_step 6000 best_mse 0.9498 temp_mse 7.2852 wind_mse 4.3267
+
+#单变量预测与多变量预测融合有提升
+
+

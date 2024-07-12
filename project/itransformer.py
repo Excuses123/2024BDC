@@ -19,7 +19,7 @@ class ITransformer(nn.Module):
         self.enc_embedding = ITEmbedding(args.seq_len, args.d_model, args.dropout)
         # Encoder
         self.encoder = Encoder(args, norm_layer=torch.nn.LayerNorm(args.d_model))
-        # todo Decoder
+        # todo Decoder use MLP
         self.projection = nn.Linear(args.d_model, args.pred_len, bias=True)
 
     def forward(self, inputs, inference=False):

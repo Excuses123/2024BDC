@@ -16,35 +16,59 @@ def invoke(inputs):
     data = load_test_data(inputs)
     data = todevice(data, device)
 
-    models = ["./checkpoint/online", "./checkpoint/offline"]
+    models = {
+        "./checkpoint/offline/all": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/offline/temp": {'ind': 0, 'weight': 1},
+        "./checkpoint/offline/wind": {'ind': 1, 'weight': 1}
+    }
 
     result_temp, result_wind = 0, 0
-    for model_path in models:
-        pred_temp, pred_wind = inference(model_path, data)
-        result_temp += pred_temp
-        result_wind += pred_wind
+    num_temp, num_wind = 0, 0
+    for model_path, info in models.items():
+        preds = inference(model_path, data)
+        if info['ind'] == 0:
+            result_temp += preds[info['ind']] * info['weight']
+            num_temp += info['weight']
+        elif info['ind'] == 1:
+            result_wind += preds[info['ind']] * info['weight']
+            num_wind += info['weight']
+        else:
+            result_temp += preds[info['ind'][0]] * info['weight']
+            num_temp += info['weight']
+            result_wind += preds[info['ind'][1]] * info['weight']
+            num_wind += info['weight']
 
-    result_temp = result_temp / len(models)
-    result_wind = result_wind / len(models)
+    result_temp = result_temp / num_temp
+    result_wind = result_wind / num_wind
+    result_wind = np.abs(result_wind)  # 后处理：风速不为负
 
     np.save(os.path.join(save_path, "temp_predict.npy"), result_temp)
     np.save(os.path.join(save_path, "wind_predict.npy"), result_wind)
 
 
-def invoke_eval(inputs):
+def invoke_eval(inputs, models):
     data = load_test_data(inputs)
     data = todevice(data, device)
 
-    models = ["./checkpoint/online", "./checkpoint/offline"]
-
     result_temp, result_wind = 0, 0
-    for model_path in models:
-        pred_temp, pred_wind = inference(model_path, data)
-        result_temp += pred_temp
-        result_wind += pred_wind
+    num_temp, num_wind = 0, 0
+    for model_path, info in models.items():
+        preds = inference(model_path, data)
+        if info['ind'] == 0:
+            result_temp += preds[info['ind']] * info['weight']
+            num_temp += info['weight']
+        elif info['ind'] == 1:
+            result_wind += preds[info['ind']] * info['weight']
+            num_wind += info['weight']
+        else:
+            result_temp += preds[info['ind'][0]] * info['weight']
+            num_temp += info['weight']
+            result_wind += preds[info['ind'][1]] * info['weight']
+            num_wind += info['weight']
 
-    result_temp = result_temp / len(models)
-    result_wind = result_wind / len(models)
+    result_temp = result_temp / num_temp
+    result_wind = result_wind / num_wind
+    result_wind = np.abs(result_wind)  # 后处理：风速不为负
 
     label_temp = np.load(os.path.join(inputs, "temp_lookback_label.npy"))
     label_wind = np.load(os.path.join(inputs, "wind_lookback_label.npy"))
@@ -76,7 +100,6 @@ def inference(model_path, data):
 
     pred_temp = pred_temp.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
     pred_wind = pred_wind.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
-    pred_wind = np.abs(pred_wind)  # 风速不为负
 
     return pred_temp, pred_wind
 

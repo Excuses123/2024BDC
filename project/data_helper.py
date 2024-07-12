@@ -26,6 +26,7 @@ class MyDataset(Dataset):
         self.args = args
         self._load_data()
         self.window_num = self.time_num - self.args.seq_len - self.args.pred_len + 1
+        print(f"time_num: {self.time_num}, station_num: {self.station_num}")
 
     def __len__(self):
         return self.window_num * self.station_num
@@ -33,11 +34,16 @@ class MyDataset(Dataset):
     def _load_data(self):
         self.temp = np.load(os.path.join(self.args.data_path, "temp.npy")).squeeze(-1)  # [T, S]
         self.wind = np.load(os.path.join(self.args.data_path, "wind.npy")).squeeze(-1)  # [T, S]
+        self.era5 = np.load(os.path.join(self.args.data_path, "global_data.npy"))  # [T/3, 4, 9, S]
+        # # 数据处理，过滤掉变量标准差<=1的站点  *测试结果：指标下降，但是对融合指标是否有提升还不确定*
+        # if self.args.pred_var != 'all':
+        #     std = self.temp.std(axis=0) if self.args.pred_var == 'temp' else self.wind.std(axis=0)
+        #     ind = np.where(std > 1)[0]
+        #     self.temp = self.temp[:, ind]
+        #     self.wind = self.wind[:, ind]
+        #     self.era5 = self.era5[:, :, :, ind]
         self.time_num, self.station_num = self.temp.shape
-        # self.era5 = np.load(os.path.join(self.args.data_path, "global_data.npy")).repeat(3, axis=0)  # [T,4,9,S]
-        self.era5 = np.load(
-            os.path.join(self.args.data_path, "global_data.npy")
-        ).transpose([0, 2, 1, 3]).reshape((self.time_num, 3, 4, self.station_num)).transpose([0, 2, 1, 3])  # [T,4,3,S]
+        self.era5 = self.era5.transpose([0, 2, 1, 3]).reshape((self.time_num, 3, 4, self.station_num)).transpose([0, 2, 1, 3])  # [T,4,3,S]
 
     def __getitem__(self, idx):
         station = idx // self.window_num
@@ -79,8 +85,8 @@ def feature_engineer(temp, wind, era5):
     N, L, _ = temp.shape
 
     # temp, wind 衍生特征
-    # temp_diff = np.diff(temp, axis=1, prepend=temp[:, :1, :])  # (N, L, 1)
-    # wind_diff = np.diff(wind, axis=1, prepend=wind[:, :1, :])  # (N, L, 1)
+    temp_cumavg = cum_avg(temp.squeeze(-1)).reshape((N, L, -1))   # (N, L, 1)
+    wind_cumavg = cum_avg(wind.squeeze(-1)).reshape((N, L, -1))    # (N, L, 1)
 
     temp_lag1 = np.concatenate([np.zeros_like(temp[:, :1, :]), temp[:, :-1, :]], axis=1)
     wind_lag1 = np.concatenate([np.zeros_like(wind[:, :1, :]), wind[:, :-1, :]], axis=1)
@@ -108,7 +114,8 @@ def feature_engineer(temp, wind, era5):
     # temp_era5_3 = temp - era5_3[:, :, 4:5]
     # temp_era5_4_mean = temp / era5_4_mean
 
-    feat = np.concatenate([temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind], axis=-1)  # (N, L, -1)
+    feat = np.concatenate([temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind,
+                           temp_cumavg, wind_cumavg], axis=-1)  # (N, L, -1)
 
     if feat.shape[0] == 1:
         feat = feat.squeeze(axis=0)
@@ -145,3 +152,16 @@ def load_test_data(data_path, label=False):
 
     return data
 
+
+def cum_avg(arr):
+    """
+    arr: [N, L]
+    """
+    avg_arr = np.zeros_like(arr)  # [N, L]
+
+    for i, row in enumerate(arr):
+        cum_sum = np.cumsum(row)  # 计算累积和
+        avg_row = cum_sum / np.arange(1, len(cum_sum) + 1)  # 计算累积均值
+        avg_arr[i, :] = avg_row
+
+    return avg_arr
