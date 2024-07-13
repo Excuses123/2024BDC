@@ -35,13 +35,29 @@ class MyDataset(Dataset):
         self.temp = np.load(os.path.join(self.args.data_path, "temp.npy")).squeeze(-1)  # [T, S]
         self.wind = np.load(os.path.join(self.args.data_path, "wind.npy")).squeeze(-1)  # [T, S]
         self.era5 = np.load(os.path.join(self.args.data_path, "global_data.npy"))  # [T/3, 4, 9, S]
-        # # 数据处理，过滤掉变量标准差<=1的站点  *测试结果：指标下降，但是对融合指标是否有提升还不确定*
-        # if self.args.pred_var != 'all':
-        #     std = self.temp.std(axis=0) if self.args.pred_var == 'temp' else self.wind.std(axis=0)
-        #     ind = np.where(std > 1)[0]
-        #     self.temp = self.temp[:, ind]
-        #     self.wind = self.wind[:, ind]
-        #     self.era5 = self.era5[:, :, :, ind]
+
+        if self.args.outlier_strategy == 1:
+            # 数据处理，过滤掉变量标准差<=1的站点
+            if self.args.pred_var != 'all':
+                std = self.temp.std(axis=0) if self.args.pred_var == 'temp' else self.wind.std(axis=0)
+                ind = np.where(std > 1)[0]
+                self.temp = self.temp[:, ind]
+                self.wind = self.wind[:, ind]
+                self.era5 = self.era5[:, :, :, ind]
+
+        if self.args.outlier_strategy == 2:
+            # 数据处理，过滤掉变量标准差<=1的站点，属于异常数据
+            temp_std = self.temp.std(axis=0)
+            temp_ind = np.where(temp_std > 1)[0]
+
+            wind_std = self.wind.std(axis=0)
+            wind_ind = np.where(wind_std > 1)[0]
+
+            ind = np.intersect1d(temp_ind, wind_ind)
+            self.temp = self.temp[:, ind]
+            self.wind = self.wind[:, ind]
+            self.era5 = self.era5[:, :, :, ind]
+
         self.time_num, self.station_num = self.temp.shape
         self.era5 = self.era5.transpose([0, 2, 1, 3]).reshape((self.time_num, 3, 4, self.station_num)).transpose([0, 2, 1, 3])  # [T,4,3,S]
 

@@ -66,6 +66,51 @@ best_step 14000 best_mse 0.9532 temp_mse 7.3265 wind_mse 4.3322
 18.--hidden_size=168,--d_model=256
 best_step 6000 best_mse 0.9498 temp_mse 7.2852 wind_mse 4.3267
 
-#单变量预测与多变量预测融合有提升
+# all_0 保留异常值
+best_step 14000 best_mse 0.9430 temp_mse 7.1822 wind_mse 4.3330
+# all_2 删除temp&wind异常值
+best_step 7000 best_mse 0.9488 all_mse 0.9488 temp_mse 7.2794 wind_mse 4.3211
+
+# temp_0 保留异常值
+best_step 14000 best_mse 7.3122 all_mse 1.0384 temp_mse 7.3122 wind_mse 5.2062
+# temp_1 只删除temp异常值
+best_step 14000 best_mse 7.2700 all_mse 1.0406 temp_mse 7.2700 wind_mse 5.2591
+# temp_2 删除temp&wind异常值
+best_step 11000 best_mse 7.2389 all_mse 1.0308 temp_mse 7.2389 wind_mse 5.1814
+
+# wind_0  保留异常值
+best_step 5000 best_mse 4.2801 all_mse 1.1365 temp_mse 9.9512 wind_mse 4.2801
+# wind_1  只删除wind异常值
+best_step 3000 best_mse 4.2980 all_mse 1.1457 temp_mse 10.0548 wind_mse 4.2980
+# wind_2 删除temp&wind异常值
+best_step 13000 best_mse 4.3178 all_mse 1.1627 temp_mse 10.2643 wind_mse 4.3178
+
+线下:
+all_0:         0.9426678387236087, 7.18224332262788, 4.329759724526947
+all_2:         0.9487587001612853, 7.27941385853434, 4.32080546629776
+temp_0&wind_0: 0.9470927947913432, 7.3121993476543405, 4.280069004587539
+temp_1&wind_1: 0.9458167036072618, 7.270042282815926, 4.2978034853864635
+temp_2&wind_2: 0.9455204771936135, 7.2389229696156425, 4.31743991167963
+all_0+temp_0&wind_0: 0.9275138676171261, 7.094905606557683, 4.239698223282722
+all_0+temp_1&wind_1: 0.9253501385040176, 7.054777038635136, 4.246960013897943
+all_0+temp_2&wind_2: 0.9259352201063151, 7.05901555361643, 4.249806854322352
+all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2: 0.9207869493700438, 7.035875564250923, 4.2144587269660265
+
+
+线上(val):
+all_0: 1.0039627127608486
+all_2: 1.016414539227814
+temp_0&wind_0: 0.9904419572635483
+temp_1&wind_1: 1.0103265352496094
+temp_2&wind_2:
+all_0+temp_0&wind_0:
+all_0+temp_1&wind_1:
+all_0+temp_2&wind_2:
+all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2:
+
+
+# 单变量预测与多变量预测进行融合有提升
+
+
 
 

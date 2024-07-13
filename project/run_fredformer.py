@@ -1,48 +1,9 @@
-"""
-训练集：
-    2019年1月 - 2020年12月的1小时间隔
-    temp.npy: (17544, 3850, 1)   范围：(-82.7, 52.0)
-     1、两米高度的温度值（℃）
-    wind.npy: (17544, 3850, 1)   范围：(0.0, 78.8)
-     1、两米高度的风速的绝对值（m/s）
-
-    2019年1月 - 2020年12月的3小时间隔
-    global_data.npy: (5848, 4, 9, 3850)         范围：(-74.1657775878906, 106719.5)
-     1、十米高度的矢量纬向风速10U，正方向为东方（m/s）  范围：(-14.8721923828125, 20.9344482421875)
-     2、十米高度的矢量经向风速10V，正方向为北方（m/s）  范围：(-15.188034057617188, 14.637161254882812)
-     3、两米高度的温度值T2M（℃）                    范围：(-37.32951965332029, 39.07477722167971)
-     4、均一海平面气压MSL（Pa）                     范围：(96975.6875, 105129.1875)
-
-测试集：
-    2021年1月 - 2022年12月的3小时间隔
-    temp_lookback.npy: (71, 168, x, 1)
-    wind_lookback.npy: (71, 168, x, 1)
-
-    cenn_data.npy: (71, 56, 4, 9, x)
-
-71条预测样本，每条使用7天的数据，初赛预测1天(24小时)，复赛预测3天(72小时)
-
-划窗构造训练集(窗口7天)：
-7天, label(未来1天)
-
-训练
-     x               x2             y
-[N, 3850, 168] [N, 3850, 56]   [N, 3850, 24]
-
-预测
-     x               x2             y
-[71, 60, 168] [N, 60, 56]   [71, 60, 24]
-
-
-1 2 3 4 5 6 7 8 9
-1     2     3
-"""
 import os
 import time
 import torch
 import argparse
 from data_helper import create_dataloaders, load_test_data
-from itransformer import ITransformer
+from fredformer import FredFormer
 from torch.nn.parallel import DataParallel
 from utils import todevice, setup_seed, save_model
 
@@ -64,7 +25,6 @@ def validate(model, eval_data):
 
 
 def train(args):
-    # 加载训练数据
     train_dataloader = create_dataloaders(args)
 
     if args.do_eval:
@@ -73,7 +33,7 @@ def train(args):
     else:
         eval_data = None
 
-    model = ITransformer(args)
+    model = FredFormer(args)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, eps=args.epsilon)
     model.to(args.device)
     if args.device == 'cuda' and args.n_gpu >= 2:
@@ -147,8 +107,6 @@ def cmd_args():
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
     parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
     parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
-    parser.add_argument('--outlier_strategy', type=int, default=0,
-                        help='异常值处理策略, 0: 不做处理, 1: 删除单变量的异常值, 2: 同时删除两个变量的异常值')
 
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--d_model', type=int, default=168, help='dim')
@@ -157,6 +115,31 @@ def cmd_args():
     parser.add_argument('--num_layers', type=int, default=2, help='num of encoder layers')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
     parser.add_argument('--output_attention', type=int, default=0, help='output_attention')
+
+    # for fredformer
+    parser.add_argument('--enc_in', type=int, default=20, help='encoder input size')
+    parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
+    parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')
+    parser.add_argument('--individual', type=int, default=1, help='individual head; True 1 False 0')
+    parser.add_argument('--patch_len', type=int, default=16, help='patch length')
+    parser.add_argument('--stride', type=int, default=8, help='stride')
+    parser.add_argument('--padding_patch', default='end', help='None: None; end: padding on the end')
+    parser.add_argument('--revin', type=int, default=1, help='RevIN; True 1 False 0')
+    parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
+    parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract mean; 1: subtract last')
+
+    parser.add_argument('--ablation', type=int, default=0)  # ablation study 012.
+    parser.add_argument('--cf_dim', type=int, default=168)  # feature dimension
+    parser.add_argument('--cf_drop', type=float, default=0.2)  # dropout
+    parser.add_argument('--cf_depth', type=int, default=3)  # Transformer layer
+    parser.add_argument('--cf_heads', type=int, default=8)  # number of multi-heads
+    parser.add_argument('--cf_mlp', type=int, default=168)  # ff dimension
+    parser.add_argument('--cf_head_dim', type=int, default=48)  # dimension for single head
+
+    parser.add_argument('--mlp_hidden', type=int, default=128, help='hidden layer dimension of model')
+    parser.add_argument('--mlp_drop', type=float, default=0.3)  # output type
+
+    parser.add_argument('--use_nys', type=int, default=0)    #use nystrom
 
     # ========================= Learning Configs ==========================
     parser.add_argument('--max_epochs', type=int, default=10, help='训练轮数')
@@ -186,7 +169,7 @@ def parse_args():
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args.n_gpu = torch.cuda.device_count()
 
-    args.model_path = os.path.join(args.model_path, f"{args.pred_var}_{args.outlier_strategy}")
+    args.model_path = os.path.join(args.model_path, args.pred_var)
     os.makedirs(args.model_path, exist_ok=True)
 
     return args

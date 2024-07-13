@@ -17,9 +17,9 @@ def invoke(inputs):
     data = todevice(data, device)
 
     models = {
-        "./checkpoint/offline/all": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/offline/temp": {'ind': 0, 'weight': 1},
-        "./checkpoint/offline/wind": {'ind': 1, 'weight': 1}
+        "./checkpoint/offline/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/offline/temp_1": {'ind': 0, 'weight': 1},
+        "./checkpoint/offline/wind_1": {'ind': 1, 'weight': 1}
     }
 
     result_temp, result_wind = 0, 0
