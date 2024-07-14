@@ -20,9 +20,11 @@ class ITransformer(nn.Module):
         # Encoder
         self.encoder = Encoder(args, norm_layer=torch.nn.LayerNorm(args.d_model))
         # todo Decoder use MLP
-        # hidden_units = [128, 64]
-        # self.projection = MLP(args.d_model, hidden_units, use_bn=True, dropout_rate=args.dropout)
-        self.projection = nn.Linear(args.d_model, args.pred_len, bias=True)
+        self.projection = nn.Sequential(
+            nn.Linear(args.d_model, 128, bias=True),
+            nn.Dropout(args.dropout),
+            nn.Linear(128, args.pred_len, bias=True)
+        )
 
     def forward(self, inputs, inference=False):
         # Normalization from Non-stationary Transformer

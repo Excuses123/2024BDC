@@ -66,6 +66,7 @@ best_step 14000 best_mse 0.9532 temp_mse 7.3265 wind_mse 4.3322
 18.--hidden_size=168,--d_model=256
 best_step 6000 best_mse 0.9498 temp_mse 7.2852 wind_mse 4.3267
 
+
 # all_0 保留异常值
 best_step 14000 best_mse 0.9430 temp_mse 7.1822 wind_mse 4.3330
 # all_2 删除temp&wind异常值
@@ -106,11 +107,29 @@ temp_2&wind_2:
 all_0+temp_0&wind_0:
 all_0+temp_1&wind_1:
 all_0+temp_2&wind_2:
-all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2:
+all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2: 0.9835451048831095
 
+线上(train):
+all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2: 0.9855094463972035
 
 # 单变量预测与多变量预测进行融合有提升
 
+# 重新采样验证数据
+# all_0
+best_step 7000 best_mse 0.9981 all_mse 0.9981 temp_mse 6.5189 wind_mse 3.3092
+# all_0 + fft
+best_step 7000 best_mse 0.9981 all_mse 0.9981 temp_mse 6.5189 wind_mse 3.3092
 
 
+# temp_0 保留异常值
+
+# wind_0  保留异常值
+
+# temp_1 只删除temp异常值
+
+# wind_1 只删除wind异常值
+
+# temp_2 删除temp&wind异常值
+
+# wind_2 删除temp&wind异常值
 

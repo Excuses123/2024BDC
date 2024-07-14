@@ -1,6 +1,7 @@
 import os
 import torch
 import numpy as np
+from scipy.fft import fft
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -110,25 +111,8 @@ def feature_engineer(temp, wind, era5):
     temp_abs = np.abs(temp)
     temp_wind = temp - wind
 
-    # era5 衍生特征
-    """
-    1、十米高度的矢量纬向风速10U，正方向为东方（m/s）  范围：(-14.8721923828125, 20.9344482421875)
-    2、十米高度的矢量经向风速10V，正方向为北方（m/s）  范围：(-15.188034057617188, 14.637161254882812)
-    3、两米高度的温度值T2M（℃）                    范围：(-37.32951965332029, 39.07477722167971)
-    4、均一海平面气压MSL（Pa）                     范围：(96975.6875, 105129.1875)
-    """
+    # era5 特征
     era5_flatten = era5.reshape((era5.shape[0], era5.shape[1], -1))  # [N, L, 4 * 3]
-
-    # era5_1_var = era5_1.std(axis=-1)[:, :, None]
-    # era5_2_var = era5_2.std(axis=-1)[:, :, None]
-    # era5_3_var = era5_3.std(axis=-1)[:, :, None]
-    # era5_4_var = era5_4.std(axis=-1)[:, :, None]
-
-    # temp, wind 与 era5 交叉特征
-    # wind_era5_1_abs = wind - era5_1_abs[:, :, 4:5]
-    # wind_era5_2_abs = wind - era5_2_abs[:, :, 4:5]
-    # temp_era5_3 = temp - era5_3[:, :, 4:5]
-    # temp_era5_4_mean = temp / era5_4_mean
 
     feat = np.concatenate([temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind,
                            temp_cumavg, wind_cumavg], axis=-1)  # (N, L, -1)
@@ -171,6 +155,7 @@ def load_test_data(data_path, label=False):
 
 def cum_avg(arr):
     """
+    累计平均
     arr: [N, L]
     """
     avg_arr = np.zeros_like(arr)  # [N, L]
@@ -181,3 +166,16 @@ def cum_avg(arr):
         avg_arr[i, :] = avg_row
 
     return avg_arr
+
+
+def fft_func(arr):
+    """
+    傅立叶变换
+    arr: [N, L]
+    """
+    # 对数组进行傅立叶变换
+    fft_data = fft(arr, axis=-1)
+    # 由于FFT的结果是复数，我们通常只关心其幅度
+    fft_data_abs = np.abs(fft_data)
+    return np.log(fft_data_abs + 1e-15)
+

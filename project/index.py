@@ -6,7 +6,6 @@ from utils import DictToClass, todevice
 from data_helper import load_test_data
 from sklearn.metrics import mean_squared_error
 
-S = 60
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
@@ -17,9 +16,14 @@ def invoke(inputs):
     data = todevice(data, device)
 
     models = {
-        "./checkpoint/offline/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/offline/temp_1": {'ind': 0, 'weight': 1},
-        "./checkpoint/offline/wind_1": {'ind': 1, 'weight': 1}
+        "./checkpoint/online_v1/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/online_v1/all_2": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/online_v1/temp_0": {'ind': 0, 'weight': 1},
+        "./checkpoint/online_v1/wind_0": {'ind': 1, 'weight': 1},
+        "./checkpoint/online_v1/temp_1": {'ind': 0, 'weight': 1},
+        "./checkpoint/online_v1/wind_1": {'ind': 1, 'weight': 1},
+        "./checkpoint/online_v1/temp_2": {'ind': 0, 'weight': 1},
+        "./checkpoint/online_v1/wind_2": {'ind': 1, 'weight': 1}
     }
 
     result_temp, result_wind = 0, 0
@@ -98,8 +102,8 @@ def inference(model_path, data):
 
     P = pred_temp.shape[1]
 
-    pred_temp = pred_temp.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
-    pred_wind = pred_wind.reshape((-1, S, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
+    pred_temp = pred_temp.reshape((71, -1, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
+    pred_wind = pred_wind.reshape((71, -1, P, 1)).transpose(0, 2, 1, 3)  # (N, P, S, 1)
 
     return pred_temp, pred_wind
 

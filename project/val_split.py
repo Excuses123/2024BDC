@@ -1,5 +1,8 @@
+import os
 import random
 import numpy as np
+
+os.makedirs('./test_data', exist_ok=True)
 
 a = np.load("./data/global_data.npy")
 b = np.load("./data/temp.npy")
@@ -10,8 +13,10 @@ total_time, num_station = b.shape[:2]
 
 # 随机71个窗口
 win = np.array([random.randint(0, total_time - n * 3 - 168 - 24) for _ in range(71)])
-# 随机60个station
-sta = np.array([random.randint(0, num_station) for _ in range(60)])
+np.save('./test_data/sample_win.npy', win)
+# 随机120个station
+sta = np.array([random.randint(0, num_station) for _ in range(120)])
+np.save('./test_data/sample_station.npy', sta)
 
 a_train = a[:n]
 b_train = b[:n*3]
