@@ -119,6 +119,9 @@ all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2: 0.9855094463972035
 best_step 7000 best_mse 0.9981 all_mse 0.9981 temp_mse 6.5189 wind_mse 3.3092
 # all_0 + fft
 best_step 7000 best_mse 0.9981 all_mse 0.9981 temp_mse 6.5189 wind_mse 3.3092
+# all_0 + diff
+best_step 11000 best_mse 0.9927 all_mse 0.9927 temp_mse 6.5270 wind_mse 3.2634
+# all_0 + winavg
 
 
 # temp_0 保留异常值

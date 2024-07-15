@@ -105,8 +105,15 @@ def feature_engineer(temp, wind, era5):
     temp_cumavg = cum_avg(temp.squeeze(-1)).reshape((N, L, -1))   # (N, L, 1)
     wind_cumavg = cum_avg(wind.squeeze(-1)).reshape((N, L, -1))    # (N, L, 1)
 
-    temp_lag1 = np.concatenate([np.zeros_like(temp[:, :1, :]), temp[:, :-1, :]], axis=1)
-    wind_lag1 = np.concatenate([np.zeros_like(wind[:, :1, :]), wind[:, :-1, :]], axis=1)
+    # 效率问题，弃用
+    # temp_winavg = win_avg(temp.squeeze(-1), 24).reshape((N, L, -1))  # (N, L, 1)
+    # wind_winavg = win_avg(wind.squeeze(-1), 24).reshape((N, L, -1))  # (N, L, 1)
+
+    temp_diff = np.diff(temp, prepend=temp[:, :1, :], axis=1)
+    wind_diff = np.diff(wind, prepend=wind[:, :1, :], axis=1)
+
+    temp_lag = np.concatenate([np.zeros_like(temp[:, :1, :]), temp[:, :-1, :]], axis=1)
+    wind_lag = np.concatenate([np.zeros_like(wind[:, :1, :]), wind[:, :-1, :]], axis=1)
 
     temp_abs = np.abs(temp)
     temp_wind = temp - wind
@@ -114,8 +121,8 @@ def feature_engineer(temp, wind, era5):
     # era5 特征
     era5_flatten = era5.reshape((era5.shape[0], era5.shape[1], -1))  # [N, L, 4 * 3]
 
-    feat = np.concatenate([temp, wind, era5_flatten, temp_lag1, wind_lag1, temp_abs, temp_wind,
-                           temp_cumavg, wind_cumavg], axis=-1)  # (N, L, -1)
+    feat = np.concatenate([temp, wind, era5_flatten, temp_lag, wind_lag, temp_abs, temp_wind,
+                           temp_cumavg, wind_cumavg, temp_diff, wind_diff], axis=-1)  # (N, L, -1)
 
     if feat.shape[0] == 1:
         feat = feat.squeeze(axis=0)
@@ -126,7 +133,6 @@ def feature_engineer(temp, wind, era5):
 def load_test_data(data_path, label=False):
     temp = np.load(os.path.join(data_path, "temp_lookback.npy"))  # (N, L, S, 1)
     wind = np.load(os.path.join(data_path, "wind_lookback.npy"))  # (N, L, S, 1)
-    # era5 = np.load(os.path.join(data_path, "cenn_data.npy")).repeat(3, axis=1)  # (N, L, 4, 9, S)
     era5 = np.load(os.path.join(data_path, "cenn_data.npy"))  # (N, L/3, 4, 9, S)
 
     N, L, S, _ = temp.shape  # (N, L, S, 1) -> [71, 168, 60, 1]
@@ -168,6 +174,19 @@ def cum_avg(arr):
     return avg_arr
 
 
+def win_avg(arr, window):
+    """
+    滑动窗口平均
+    arr: [N, L]
+    """
+    result = np.zeros_like(arr).astype(float)  # [N, L]
+
+    for i in range(1, arr.shape[1] + 1):
+        result[:, i-1] = arr[:, max(i-window, 0):i].mean(axis=1)
+
+    return result
+
+
 def fft_func(arr):
     """
     傅立叶变换
@@ -175,7 +194,6 @@ def fft_func(arr):
     """
     # 对数组进行傅立叶变换
     fft_data = fft(arr, axis=-1)
-    # 由于FFT的结果是复数，我们通常只关心其幅度
     fft_data_abs = np.abs(fft_data)
     return np.log(fft_data_abs + 1e-15)
 
