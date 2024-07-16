@@ -2,28 +2,23 @@ import os
 import torch
 import numpy as np
 from itransformer import ITransformer
+from fredformer import FredFormer
 from utils import DictToClass, todevice
 from data_helper import load_test_data
 from sklearn.metrics import mean_squared_error
 
+bsz = 2048
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 def invoke(inputs):
     save_path = '/home/mw/project'
 
-    data = load_test_data(inputs)
-    data = todevice(data, device)
+    data = load_test_data(inputs)['x']  # (N * S, L, -1)
 
     models = {
-        "./checkpoint/online_v1/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/online_v1/all_2": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/online_v1/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/online_v1/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/online_v1/temp_1": {'ind': 0, 'weight': 1},
-        "./checkpoint/online_v1/wind_1": {'ind': 1, 'weight': 1},
-        "./checkpoint/online_v1/temp_2": {'ind': 0, 'weight': 1},
-        "./checkpoint/online_v1/wind_2": {'ind': 1, 'weight': 1}
+        "./checkpoint/itransformer/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/fredformer/all_0": {'ind': [0, 1], 'weight': 1}
     }
 
     result_temp, result_wind = 0, 0
@@ -44,15 +39,13 @@ def invoke(inputs):
 
     result_temp = result_temp / num_temp
     result_wind = result_wind / num_wind
-    result_wind = np.abs(result_wind)  # 后处理：风速不为负
 
     np.save(os.path.join(save_path, "temp_predict.npy"), result_temp)
     np.save(os.path.join(save_path, "wind_predict.npy"), result_wind)
 
 
 def invoke_eval(inputs, models):
-    data = load_test_data(inputs)
-    data = todevice(data, device)
+    data = load_test_data(inputs)['x']  # (N * S, L, -1)
 
     result_temp, result_wind = 0, 0
     num_temp, num_wind = 0, 0
@@ -72,7 +65,6 @@ def invoke_eval(inputs, models):
 
     result_temp = result_temp / num_temp
     result_wind = result_wind / num_wind
-    result_wind = np.abs(result_wind)  # 后处理：风速不为负
 
     label_temp = np.load(os.path.join(inputs, "temp_lookback_label.npy"))
     label_wind = np.load(os.path.join(inputs, "wind_lookback_label.npy"))
@@ -91,14 +83,29 @@ def inference(model_path, data):
     checkpoint = torch.load(f"{model_path}/model.bin", map_location='cpu')
     args = DictToClass(checkpoint['args'])
 
-    model = ITransformer(args).to(device)
+    if args.model_name == 'itransformer':
+        model = ITransformer(args).to(device)
+    elif args.model_name == 'fredformer':
+        model = FredFormer(args).to(device)
+    else:
+        raise Exception(f"model_name: {args.model_name} is not supported!")
+
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
 
-    pred_temp, pred_wind = model(data, inference=True)  # [batch, pred_len, 1]
+    step = data.shape[0] // bsz + 1
+    pred_temp, pred_wind = [], []
+    with torch.no_grad():
+        for i in range(step):
+            batch = {'x': todevice(data[i * bsz: (i+1) * bsz, :, :], device)}
+            p_temp, p_wind = model(batch, inference=True)  # [batch, pred_len, 1]
 
-    pred_temp = pred_temp.detach().cpu().numpy()  # (N * S, P, 1)
-    pred_wind = pred_wind.detach().cpu().numpy()  # (N * S, P, 1)
+            pred_temp.append(p_temp.detach().cpu().numpy())  # (N * S, P, 1)
+            pred_wind.append(p_wind.detach().cpu().numpy())  # (N * S, P, 1)
+
+    pred_temp = np.concatenate(pred_temp, axis=0)
+    pred_wind = np.concatenate(pred_wind, axis=0)
+    pred_wind = np.abs(pred_wind)  # 后处理：风速不为负
 
     P = pred_temp.shape[1]
 

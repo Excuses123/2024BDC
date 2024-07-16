@@ -23,19 +23,7 @@
 71条预测样本，每条使用7天的数据，初赛预测1天(24小时)，复赛预测3天(72小时)
 
 划窗构造训练集(窗口7天)：
-7天, label(未来1天)
-
-训练
-     x               x2             y
-[N, 3850, 168] [N, 3850, 56]   [N, 3850, 24]
-
-预测
-     x               x2             y
-[71, 60, 168] [N, 60, 56]   [71, 60, 24]
-
-
-1 2 3 4 5 6 7 8 9
-1     2     3
+x(7天), label(未来1天)
 """
 import os
 import time
@@ -144,6 +132,7 @@ def cmd_args():
 
     parser.add_argument("--seed", type=int, default=1024, help="random seed.")
 
+    parser.add_argument('--model_name', type=str, default='itransformer', help='模型')
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
     parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
     parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
@@ -160,11 +149,11 @@ def cmd_args():
 
     # ========================= Learning Configs ==========================
     parser.add_argument('--max_epochs', type=int, default=10, help='训练轮数')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch大小')
+    parser.add_argument('--batch_size', type=int, default=10240, help='batch大小')
     parser.add_argument('--print_steps', type=int, default=100, help="多少步打印一次损失")
     parser.add_argument('--eval_step', type=int, default=1000, help="多少步进行一次验证")
     parser.add_argument('--eval_epoch', type=int, default=1, help="多少轮进行一次验证")
-    parser.add_argument('--learning_rate', default=0.001, type=float, help='初始的学习率')
+    parser.add_argument('--learning_rate', default=5e-4, type=float, help='初始的学习率')
     parser.add_argument("--epsilon", default=1e-20, type=float)
     parser.add_argument("--weight_decay", default=0.01, type=float, help="学习率衰减权重")
     parser.add_argument('--prefetch', default=16, type=int, help="训练时预加载的数据条数，加快训练速度")

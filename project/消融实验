@@ -116,23 +116,31 @@ all_0+all_2+temp_0&wind_0+temp_1&wind_1+temp_2&wind_2: 0.9855094463972035
 
 # 重新采样验证数据
 # all_0
-best_step 7000 best_mse 0.9981 all_mse 0.9981 temp_mse 6.5189 wind_mse 3.3092
-# all_0 + fft
-best_step 7000 best_mse 0.9981 all_mse 0.9981 temp_mse 6.5189 wind_mse 3.3092
-# all_0 + diff
 best_step 11000 best_mse 0.9927 all_mse 0.9927 temp_mse 6.5270 wind_mse 3.2634
-# all_0 + winavg
-
-
+# all_2
+best_step 8000 best_mse 0.9930 all_mse 0.9930 temp_mse 6.4762 wind_mse 3.2989
 # temp_0 保留异常值
-
+best_step 11000 best_mse 6.5816 all_mse 1.0791 temp_mse 6.5816 wind_mse 3.8802
 # wind_0  保留异常值
-
+best_step 8000 best_mse 3.2847 all_mse 1.2038 temp_mse 8.9524 wind_mse 3.2847
 # temp_1 只删除temp异常值
-
+best_step 13000 best_mse 6.5832 all_mse 1.0868 temp_mse 6.5832 wind_mse 3.9374
 # wind_1 只删除wind异常值
-
+best_step 10000 best_mse 3.2912 all_mse 1.2007 temp_mse 8.9058 wind_mse 3.2912
 # temp_2 删除temp&wind异常值
-
+best_step 8000 best_mse 6.5366 all_mse 1.0708 temp_mse 6.5366 wind_mse 3.8473
 # wind_2 删除temp&wind异常值
+best_step 2000 best_mse 3.2863 all_mse 1.1805 temp_mse 8.6786 wind_mse 3.2863
 
+all_0 + all_2 线下
+0.9829474792995092, 6.422232442876195, 3.2577037299748834
+all_0 + all_2 线上
+0.998225135992886
+
+
+#################fredformer
+--learning_rate=5e-4
+best_step 16000 best_mse 1.0138 all_mse 1.0138 temp_mse 6.6418 wind_mse 3.3483
+
+--learning_rate=0.001
+best_step 16000 best_mse 1.0138 all_mse 1.0138 temp_mse 6.6418 wind_mse 3.3483

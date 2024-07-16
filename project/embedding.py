@@ -4,22 +4,6 @@ import numpy as np
 import math
 
 
-class ITEmbedding(nn.Module):
-    """ for itransformer """
-    def __init__(self, c_in, d_model, dropout=0.1):
-        super(ITEmbedding, self).__init__()
-        self.value_embedding = nn.Linear(c_in, d_model)
-        self.dropout = nn.Dropout(p=dropout)
-
-    def forward(self, x, x_mark=None):
-        x = x.permute(0, 2, 1)  # [batch, feat, time]
-        if x_mark is None:
-            x = self.value_embedding(x)  # [batch, feat, dim]
-        else:
-            x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1))
-        return self.dropout(x)
-
-
 class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, n_position=1024):
         super(PositionalEmbedding, self).__init__()

@@ -105,10 +105,6 @@ def feature_engineer(temp, wind, era5):
     temp_cumavg = cum_avg(temp.squeeze(-1)).reshape((N, L, -1))   # (N, L, 1)
     wind_cumavg = cum_avg(wind.squeeze(-1)).reshape((N, L, -1))    # (N, L, 1)
 
-    # 效率问题，弃用
-    # temp_winavg = win_avg(temp.squeeze(-1), 24).reshape((N, L, -1))  # (N, L, 1)
-    # wind_winavg = win_avg(wind.squeeze(-1), 24).reshape((N, L, -1))  # (N, L, 1)
-
     temp_diff = np.diff(temp, prepend=temp[:, :1, :], axis=1)
     wind_diff = np.diff(wind, prepend=wind[:, :1, :], axis=1)
 
@@ -164,12 +160,8 @@ def cum_avg(arr):
     累计平均
     arr: [N, L]
     """
-    avg_arr = np.zeros_like(arr)  # [N, L]
-
-    for i, row in enumerate(arr):
-        cum_sum = np.cumsum(row)  # 计算累积和
-        avg_row = cum_sum / np.arange(1, len(cum_sum) + 1)  # 计算累积均值
-        avg_arr[i, :] = avg_row
+    cum_sum = np.cumsum(arr, axis=1)
+    avg_arr = cum_sum / np.arange(1, arr.shape[1] + 1)
 
     return avg_arr
 

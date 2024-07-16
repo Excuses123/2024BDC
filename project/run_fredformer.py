@@ -104,40 +104,32 @@ def cmd_args():
 
     parser.add_argument("--seed", type=int, default=1024, help="random seed.")
 
+    parser.add_argument('--model_name', type=str, default='fredformer', help='模型')
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
     parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
     parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
-
-    parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
-    parser.add_argument('--d_model', type=int, default=168, help='dim')
-    parser.add_argument('--hidden_size', type=int, default=168, help='dimension of fcn')
-    parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
-    parser.add_argument('--num_layers', type=int, default=2, help='num of encoder layers')
-    parser.add_argument('--activation', type=str, default='gelu', help='activation')
-    parser.add_argument('--output_attention', type=int, default=0, help='output_attention')
+    parser.add_argument('--outlier_strategy', type=int, default=0,
+                        help='异常值处理策略, 0: 不做处理, 1: 删除单变量的异常值, 2: 同时删除两个变量的异常值')
 
     # for fredformer
-    parser.add_argument('--enc_in', type=int, default=20, help='encoder input size')
-    parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
-    parser.add_argument('--head_dropout', type=float, default=0.0, help='head dropout')
+    parser.add_argument('--enc_in', type=int, default=22, help='encoder input size')
+    parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--individual', type=int, default=1, help='individual head; True 1 False 0')
-    parser.add_argument('--patch_len', type=int, default=16, help='patch length')
-    parser.add_argument('--stride', type=int, default=8, help='stride')
+    parser.add_argument('--patch_len', type=int, default=24, help='patch length')
+    parser.add_argument('--stride', type=int, default=12, help='stride')
     parser.add_argument('--padding_patch', default='end', help='None: None; end: padding on the end')
     parser.add_argument('--revin', type=int, default=1, help='RevIN; True 1 False 0')
     parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
     parser.add_argument('--subtract_last', type=int, default=0, help='0: subtract mean; 1: subtract last')
 
     parser.add_argument('--ablation', type=int, default=0)  # ablation study 012.
-    parser.add_argument('--cf_dim', type=int, default=168)  # feature dimension
+    parser.add_argument('--cf_dim', type=int, default=128)  # feature dimension
     parser.add_argument('--cf_drop', type=float, default=0.2)  # dropout
-    parser.add_argument('--cf_depth', type=int, default=3)  # Transformer layer
-    parser.add_argument('--cf_heads', type=int, default=8)  # number of multi-heads
-    parser.add_argument('--cf_mlp', type=int, default=168)  # ff dimension
-    parser.add_argument('--cf_head_dim', type=int, default=48)  # dimension for single head
-
-    parser.add_argument('--mlp_hidden', type=int, default=128, help='hidden layer dimension of model')
-    parser.add_argument('--mlp_drop', type=float, default=0.3)  # output type
+    parser.add_argument('--cf_depth', type=int, default=2)  # Transformer layer
+    parser.add_argument('--cf_heads', type=int, default=4)  # number of multi-heads
+    parser.add_argument('--cf_mlp', type=int, default=128)  # ff dimension
+    parser.add_argument('--cf_head_dim', type=int, default=8)  # dimension for single head
+    parser.add_argument('--d_model', type=int, default=96, help='dim')
 
     parser.add_argument('--use_nys', type=int, default=0)    #use nystrom
 
@@ -169,7 +161,7 @@ def parse_args():
     args.device = 'cuda' if torch.cuda.is_available() else 'cpu'
     args.n_gpu = torch.cuda.device_count()
 
-    args.model_path = os.path.join(args.model_path, args.pred_var)
+    args.model_path = os.path.join(args.model_path, f"{args.pred_var}_{args.outlier_strategy}")
     os.makedirs(args.model_path, exist_ok=True)
 
     return args

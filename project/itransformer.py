@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from math import sqrt
-from embedding import ITEmbedding
 
 
 class ITransformer(nn.Module):
@@ -19,7 +18,7 @@ class ITransformer(nn.Module):
         self.enc_embedding = ITEmbedding(args.seq_len, args.d_model, args.dropout)
         # Encoder
         self.encoder = Encoder(args, norm_layer=torch.nn.LayerNorm(args.d_model))
-        # todo Decoder use MLP
+        # Decoder
         self.projection = nn.Sequential(
             nn.Linear(args.d_model, 128, bias=True),
             nn.Dropout(args.dropout),
@@ -28,7 +27,7 @@ class ITransformer(nn.Module):
 
     def forward(self, inputs, inference=False):
         # Normalization from Non-stationary Transformer
-        x_enc = inputs['x']
+        x_enc = inputs['x']   # [batch, seq, feat]
         means = x_enc.mean(1, keepdim=True).detach()
         x_enc = x_enc - means
         stdev = torch.sqrt(torch.var(x_enc, dim=1, keepdim=True, unbiased=False) + 1e-20)
@@ -55,6 +54,22 @@ class ITransformer(nn.Module):
             wind_loss = F.mse_loss(pred_wind, inputs['label_wind'])
             loss = temp_loss / inputs['label_temp'].var().detach() * 10 + wind_loss / inputs['label_wind'].var().detach()
             return loss, temp_loss, wind_loss
+
+
+class ITEmbedding(nn.Module):
+    """ for itransformer """
+    def __init__(self, c_in, d_model, dropout=0.1):
+        super(ITEmbedding, self).__init__()
+        self.value_embedding = nn.Linear(c_in, d_model)
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(self, x, x_mark=None):
+        x = x.permute(0, 2, 1)  # [batch, feat, time]
+        if x_mark is None:
+            x = self.value_embedding(x)  # [batch, feat, dim]
+        else:
+            x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1))
+        return self.dropout(x)
 
 
 class TriangularCausalMask(object):

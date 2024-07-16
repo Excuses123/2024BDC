@@ -1,8 +1,7 @@
 import math
 import torch
-from torch import nn, einsum, Tensor
+from torch import nn, einsum
 import torch.nn.functional as F
-from typing import Optional
 from einops import rearrange
 
 
@@ -12,32 +11,18 @@ class FredFormer(nn.Module):
     Github: https://github.com/chenzRG/Fredformer
 
     """
-    def __init__(self, args,
-                 d_k: Optional[int] = None, d_v: Optional[int] = None,
-                 norm: str = 'BatchNorm', attn_dropout: float = 0.3,
-                 act: str = "gelu", key_padding_mask: bool = 'auto', padding_var: Optional[int] = None,
-                 attn_mask: Optional[Tensor] = None, res_attention: bool = True,
-                 pre_norm: bool = False, store_attn: bool = False, pe: str = 'zeros', learn_pe: bool = True,
-                 pretrain_head: bool = False, head_type='flatten', verbose: bool = False, **kwargs):
+    def __init__(self, args):
         super(FredFormer, self).__init__()
         self.args = args
         output = 0
-        self.model = Fredformer_backbone(ablation=args.ablation, mlp_drop=args.mlp_drop, use_nys=args.use_nys,
-                                         output=output, mlp_hidden=args.mlp_hidden, c_in=args.enc_in,
-                                         context_window=args.seq_len, target_window=args.pred_len, patch_len=args.patch_len,
-                                         stride=args.stride, n_layers=args.num_layers,
-                                         d_model=args.d_model, n_heads=args.n_heads, d_k=d_k, d_v=d_v,
-                                         d_ff=args.hidden_size, norm=norm, attn_dropout=attn_dropout,
-                                         dropout=args.dropout, act=act, key_padding_mask=key_padding_mask,
-                                         padding_var=padding_var, attn_mask=attn_mask, res_attention=res_attention,
-                                         pre_norm=pre_norm, store_attn=store_attn, pe=pe, learn_pe=learn_pe,
-                                         fc_dropout=args.fc_dropout, head_dropout=args.head_dropout,
-                                         padding_patch=args.padding_patch, pretrain_head=pretrain_head,
-                                         head_type=head_type, individual=args.individual, revin=args.revin,
-                                         affine=args.affine, subtract_last=args.subtract_last, verbose=verbose,
-                                         cf_dim=args.cf_dim, cf_depth=args.cf_depth, cf_heads=args.cf_heads,
-                                         cf_mlp=args.cf_mlp, cf_head_dim=args.cf_head_dim, cf_drop=args.cf_drop,
-                                         **kwargs)
+        self.model = Fredformer_backbone(ablation=args.ablation, use_nys=args.use_nys, output=output, c_in=args.enc_in,
+                                         context_window=args.seq_len, target_window=args.pred_len,
+                                         patch_len=args.patch_len, stride=args.stride, d_model=args.d_model,
+                                         head_dropout=args.dropout, padding_patch=args.padding_patch,
+                                         individual=args.individual, revin=args.revin, affine=args.affine,
+                                         subtract_last=args.subtract_last, cf_dim=args.cf_dim, cf_depth=args.cf_depth,
+                                         cf_heads=args.cf_heads, cf_mlp=args.cf_mlp, cf_head_dim=args.cf_head_dim,
+                                         cf_drop=args.cf_drop)
 
     def forward(self, inputs, inference=False):
         """
@@ -61,11 +46,10 @@ class FredFormer(nn.Module):
 
 
 class Fredformer_backbone(nn.Module):
-    def __init__(self, ablation: int, mlp_drop: float, use_nys: int, output: int, mlp_hidden: int, cf_dim: int,
+    def __init__(self, ablation: int, use_nys: int, output: int, cf_dim: int,
                  cf_depth: int, cf_heads: int, cf_mlp: int, cf_head_dim: int, cf_drop: float, c_in: int,
                  context_window: int, target_window: int, patch_len: int, stride: int, d_model: int,
-                 head_dropout=0, padding_patch=None, individual=False, revin=True, affine=True, subtract_last=False,
-                 **kwargs):
+                 head_dropout=0, padding_patch=None, individual=False, revin=True, affine=True, subtract_last=False):
 
         super().__init__()
         self.use_nys = use_nys
