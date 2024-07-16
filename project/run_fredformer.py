@@ -124,12 +124,12 @@ def cmd_args():
 
     parser.add_argument('--ablation', type=int, default=0)  # ablation study 012.
     parser.add_argument('--cf_dim', type=int, default=128)  # feature dimension
-    parser.add_argument('--cf_drop', type=float, default=0.2)  # dropout
+    parser.add_argument('--cf_drop', type=float, default=0.1)  # dropout
     parser.add_argument('--cf_depth', type=int, default=2)  # Transformer layer
     parser.add_argument('--cf_heads', type=int, default=4)  # number of multi-heads
-    parser.add_argument('--cf_mlp', type=int, default=128)  # ff dimension
-    parser.add_argument('--cf_head_dim', type=int, default=8)  # dimension for single head
-    parser.add_argument('--d_model', type=int, default=96, help='dim')
+    parser.add_argument('--cf_mlp', type=int, default=96)  # ff dimension
+    parser.add_argument('--cf_head_dim', type=int, default=16)  # dimension for single head
+    parser.add_argument('--d_model', type=int, default=64, help='dim')
 
     parser.add_argument('--use_nys', type=int, default=0)    #use nystrom
 

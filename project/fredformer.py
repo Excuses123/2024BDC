@@ -56,7 +56,8 @@ class Fredformer_backbone(nn.Module):
         self.ablation = ablation
         # RevIn
         self.revin = revin
-        if self.revin: self.revin_layer = RevIN(c_in, affine=affine, subtract_last=subtract_last)
+        if self.revin:
+            self.revin_layer = RevIN(c_in, affine=affine, subtract_last=subtract_last)
         self.output = output
         # Patching
         self.patch_len = patch_len
