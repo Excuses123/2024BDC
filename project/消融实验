@@ -120,17 +120,17 @@ best_step 11000 best_mse 0.9927 all_mse 0.9927 temp_mse 6.5270 wind_mse 3.2634
 # all_2
 best_step 8000 best_mse 0.9930 all_mse 0.9930 temp_mse 6.4762 wind_mse 3.2989
 # temp_0 保留异常值
-best_step 11000 best_mse 6.5816 all_mse 1.0791 temp_mse 6.5816 wind_mse 3.8802
+best_step 13000 best_mse 6.5276 all_mse 1.0819 temp_mse 6.5276 wind_mse 3.9368
 # wind_0  保留异常值
-best_step 8000 best_mse 3.2847 all_mse 1.2038 temp_mse 8.9524 wind_mse 3.2847
+best_step 8000 best_mse 3.2916 all_mse 1.2017 temp_mse 8.9165 wind_mse 3.2916
 # temp_1 只删除temp异常值
-best_step 13000 best_mse 6.5832 all_mse 1.0868 temp_mse 6.5832 wind_mse 3.9374
+best_step 6000 best_mse 6.5593 all_mse 1.0813 temp_mse 6.5593 wind_mse 3.9115
 # wind_1 只删除wind异常值
-best_step 10000 best_mse 3.2912 all_mse 1.2007 temp_mse 8.9058 wind_mse 3.2912
+best_step 3000 best_mse 3.2919 all_mse 1.1795 temp_mse 8.6577 wind_mse 3.2919
 # temp_2 删除temp&wind异常值
-best_step 8000 best_mse 6.5366 all_mse 1.0708 temp_mse 6.5366 wind_mse 3.8473
+best_step 8000 best_mse 6.5086 all_mse 1.0690 temp_mse 6.5086 wind_mse 3.8520
 # wind_2 删除temp&wind异常值
-best_step 2000 best_mse 3.2863 all_mse 1.1805 temp_mse 8.6786 wind_mse 3.2863
+best_step 2000 best_mse 3.2911 all_mse 1.1803 temp_mse 8.6680 wind_mse 3.2911
 
 all_0 + all_2 线下
 0.9829474792995092, 6.422232442876195, 3.2577037299748834
@@ -144,3 +144,18 @@ best_step 16000 best_mse 1.0138 all_mse 1.0138 temp_mse 6.6418 wind_mse 3.3483
 
 --learning_rate=0.001
 best_step 16000 best_mse 1.0138 all_mse 1.0138 temp_mse 6.6418 wind_mse 3.3483
+
+
+#**** 加入fredformer 线上变差
+
+
+
+
+
+
+
+
+
+
+
+

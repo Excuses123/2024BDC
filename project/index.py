@@ -18,7 +18,13 @@ def invoke(inputs):
 
     models = {
         "./checkpoint/itransformer/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/fredformer/all_0": {'ind': [0, 1], 'weight': 1}
+        "./checkpoint/itransformer/all_2": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/itransformer/temp_0": {'ind': 0, 'weight': 1},
+        "./checkpoint/itransformer/wind_0": {'ind': 1, 'weight': 1},
+        "./checkpoint/itransformer/temp_1": {'ind': 0, 'weight': 1},
+        "./checkpoint/itransformer/wind_1": {'ind': 1, 'weight': 1},
+        "./checkpoint/itransformer/temp_2": {'ind': 0, 'weight': 1},
+        "./checkpoint/itransformer/wind_2": {'ind': 1, 'weight': 1},
     }
 
     result_temp, result_wind = 0, 0
