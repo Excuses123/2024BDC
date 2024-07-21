@@ -62,7 +62,8 @@ def train(args):
         eval_data = None
 
     model = ITransformer(args)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, eps=args.epsilon)
+    parameters = [{'params': [p for n, p in model.named_parameters()], 'weight_decay': args.weight_decay}]
+    optimizer = torch.optim.AdamW(parameters, lr=args.learning_rate, eps=args.epsilon)
     model.to(args.device)
     if args.device == 'cuda' and args.n_gpu >= 2:
         model = DataParallel(model)
@@ -138,6 +139,7 @@ def cmd_args():
     parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
     parser.add_argument('--outlier_strategy', type=int, default=0,
                         help='异常值处理策略, 0: 不做处理, 1: 删除单变量的异常值, 2: 同时删除两个变量的异常值')
+    parser.add_argument('--sample_rate', type=float, default=0.8, help='训练数据比例')
 
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--d_model', type=int, default=168, help='dim')

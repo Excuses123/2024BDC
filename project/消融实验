@@ -150,7 +150,26 @@ best_step 16000 best_mse 1.0138 all_mse 1.0138 temp_mse 6.6418 wind_mse 3.3483
 
 
 
+{
+    "./checkpoint/fold_0/all_0": {'ind': [0, 1], 'weight': 1},
+    "./checkpoint/fold_2/all_0": {'ind': [0, 1], 'weight': 1},
+    "./checkpoint/fold_1/all_0": {'ind': [0, 1], 'weight': 1},
+    "./checkpoint/fold_3/all_0": {'ind': [0, 1], 'weight': 1},
+    "./checkpoint/fold_4/all_0": {'ind': [0, 1], 'weight': 1},
+}0.9847652153688944
++
+{
+    "./checkpoint/itransformer/all_0": {'ind': [0, 1], 'weight': 1},
+    "./checkpoint/itransformer/all_2": {'ind': [0, 1], 'weight': 1},
+    "./checkpoint/itransformer/temp_0": {'ind': 0, 'weight': 1},
+    "./checkpoint/itransformer/wind_0": {'ind': 1, 'weight': 1},
+    "./checkpoint/itransformer/temp_1": {'ind': 0, 'weight': 1},
+    "./checkpoint/itransformer/wind_1": {'ind': 1, 'weight': 1},
+    "./checkpoint/itransformer/temp_2": {'ind': 0, 'weight': 1},
+    "./checkpoint/itransformer/wind_2": {'ind': 1, 'weight': 1},
+}0.9847391811854662
 
+0.9806257888238868
 
 
 

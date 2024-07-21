@@ -19,8 +19,14 @@ class ITransformer(nn.Module):
         # Encoder
         self.encoder = Encoder(args, norm_layer=torch.nn.LayerNorm(args.d_model))
         # Decoder
+        self.birnn = nn.LSTM(input_size=args.d_model, hidden_size=128,
+                             num_layers=1, bidirectional=True, batch_first=True)
+        self.dropout = nn.Dropout(args.dropout)
+        hidden_size = 128 * 2
+        # self.projection = nn.Linear(hidden_size, args.pred_len, bias=True)
         self.projection = nn.Sequential(
-            nn.Linear(args.d_model, 128, bias=True),
+            nn.Linear(hidden_size, 128, bias=True),
+            nn.ReLU(),
             nn.Dropout(args.dropout),
             nn.Linear(128, args.pred_len, bias=True)
         )
@@ -39,7 +45,9 @@ class ITransformer(nn.Module):
         enc_out = self.enc_embedding(x_enc, x_mark=None)  # [batch, feat, dim]
         enc_out, attns = self.encoder(enc_out, attn_mask=None)  # [batch, feat, dim]
 
-        dec_out = self.projection(enc_out).permute(0, 2, 1)[:, :, :N]  # [batch, pred_len, feat]
+        lstm_out, _ = self.birnn(enc_out)
+        lstm_out = self.dropout(lstm_out)
+        dec_out = self.projection(lstm_out).permute(0, 2, 1)[:, :, :N]  # [batch, pred_len, feat]
         # De-Normalization from Non-stationary Transformer
         dec_out = dec_out * (stdev[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))
         dec_out = dec_out + (means[:, 0, :].unsqueeze(1).repeat(1, self.pred_len, 1))

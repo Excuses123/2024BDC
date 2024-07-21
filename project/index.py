@@ -17,14 +17,15 @@ def invoke(inputs):
     data = load_test_data(inputs)['x']  # (N * S, L, -1)
 
     models = {
-        "./checkpoint/itransformer/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/itransformer/all_2": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/itransformer/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/itransformer/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/itransformer/temp_1": {'ind': 0, 'weight': 1},
-        "./checkpoint/itransformer/wind_1": {'ind': 1, 'weight': 1},
-        "./checkpoint/itransformer/temp_2": {'ind': 0, 'weight': 1},
-        "./checkpoint/itransformer/wind_2": {'ind': 1, 'weight': 1},
+        "./checkpoint/seed_1/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_2/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_3/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_4/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_5/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_7/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_8/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_9/all_0": {'ind': [0, 1], 'weight': 1},
+        "./checkpoint/seed_10/all_0": {'ind': [0, 1], 'weight': 1},
     }
 
     result_temp, result_wind = 0, 0

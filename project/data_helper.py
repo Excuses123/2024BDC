@@ -1,5 +1,6 @@
 import os
 import torch
+import random
 import numpy as np
 from scipy.fft import fft
 from torch.utils.data import DataLoader, Dataset
@@ -28,9 +29,15 @@ class MyDataset(Dataset):
         self._load_data()
         self.window_num = self.time_num - self.args.seq_len - self.args.pred_len + 1
         print(f"time_num: {self.time_num}, station_num: {self.station_num}")
+        total = self.window_num * self.station_num
+        if args.sample_rate == 1:
+            self.fold_map = {i: v for i, v in enumerate(range(total))}
+        else:
+            # 随机抽取指定定比例进行训练
+            self.fold_map = {i: v for i, v in enumerate(random.sample(range(total), int(total * args.sample_rate)))}
 
     def __len__(self):
-        return self.window_num * self.station_num
+        return len(self.fold_map)
 
     def _load_data(self):
         self.temp = np.load(os.path.join(self.args.data_path, "temp.npy")).squeeze(-1)  # [T, S]
@@ -62,14 +69,15 @@ class MyDataset(Dataset):
         self.time_num, self.station_num = self.temp.shape
         self.era5 = self.era5.transpose([0, 2, 1, 3]).reshape((self.time_num, 3, 4, self.station_num)).transpose([0, 2, 1, 3])  # [T,4,3,S]
 
-    def __getitem__(self, idx):
+    def __getitem__(self, index):
+        idx = self.fold_map[index]
         station = idx // self.window_num
         start = idx % self.window_num
 
         end = start + self.args.seq_len
 
-        temp_x = self.temp[start: end, station: station + 1]   # [seq_len, 1]
-        wind_x = self.wind[start: end, station: station + 1]   # [seq_len, 1]
+        temp_x = self.temp[start: end, station: station + 1]  # [seq_len, 1]
+        wind_x = self.wind[start: end, station: station + 1]  # [seq_len, 1]
         era5_x = self.era5[start: end, :, :, station: station + 1].squeeze()  # [seq_len, 4, 3]
 
         x = feature_engineer(temp_x, wind_x, era5_x)  # [seq_len, -1]
