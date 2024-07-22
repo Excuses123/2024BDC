@@ -50,6 +50,14 @@ if __name__ == '__main__':
     b_val = np.concatenate([b_val[None, i: i+168+24, sta, :] for i in win], axis=0)  # [71, 168+24, 60, 1]
     c_val = np.concatenate([c_val[None, i: i+168+24, sta, :] for i in win], axis=0)  # [71, 168+24, 60, 1]
 
+    print(a_train.shape)
+    print(b_train.shape)
+    print(c_train.shape)
+
+    print(a_val.shape)
+    print(b_val.shape)
+    print(c_val.shape)
+
     np.save(os.path.join(args.data_path, 'global_data.npy'), a_train)
     np.save(os.path.join(args.data_path, 'temp.npy'), b_train)
     np.save(os.path.join(args.data_path, 'wind.npy'), c_train)
