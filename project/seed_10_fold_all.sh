@@ -1,4 +1,4 @@
-# 线上成绩: 0.9442316500614263
+# 线上融合成绩: 0.9442316500614263
 CUDA_VISIBLE_DEVICES=0,2 python project/run_itransformer.py \
     --data_path='./data' \
     --model_path='./project/checkpoint/seed_1' \
