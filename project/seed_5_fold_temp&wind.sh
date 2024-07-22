@@ -1,3 +1,4 @@
+# 线上融合成绩: 0.9491389953916891
 # temp
 CUDA_VISIBLE_DEVICES=0,2 python project/run_itransformer.py \
     --data_path='./data' \
