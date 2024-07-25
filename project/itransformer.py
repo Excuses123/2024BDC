@@ -9,6 +9,7 @@ class ITransformer(nn.Module):
     """
     Paper link: https://arxiv.org/abs/2310.06625
     Github: https://github.com/thuml/Time-Series-Library
+    todo: postion_emb,lstm_layers,rmse
     """
 
     def __init__(self, args):
@@ -22,10 +23,8 @@ class ITransformer(nn.Module):
         self.birnn = nn.LSTM(input_size=args.d_model, hidden_size=128,
                              num_layers=1, bidirectional=True, batch_first=True)
         self.dropout = nn.Dropout(args.dropout)
-        hidden_size = 128 * 2
-        # self.projection = nn.Linear(hidden_size, args.pred_len, bias=True)
         self.projection = nn.Sequential(
-            nn.Linear(hidden_size, 128, bias=True),
+            nn.Linear(128 * 2, 128, bias=True),
             nn.ReLU(),
             nn.Dropout(args.dropout),
             nn.Linear(128, args.pred_len, bias=True)

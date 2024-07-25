@@ -135,7 +135,7 @@ def cmd_args():
 
     parser.add_argument('--model_name', type=str, default='itransformer', help='模型')
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
-    parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
+    parser.add_argument('--pred_len', type=int, default=72, help='预测窗口长度')
     parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
     parser.add_argument('--outlier_strategy', type=int, default=0,
                         help='异常值处理策略, 0: 不做处理, 1: 删除单变量的异常值, 2: 同时删除两个变量的异常值')

@@ -32,10 +32,10 @@ if __name__ == '__main__':
     total_time, num_station = b.shape[:2]
 
     # 随机71个窗口
-    win = np.array([random.randint(0, total_time - n * 3 - 168 - 24) for _ in range(71)])
+    win = np.array([random.randint(0, total_time - n * 3 - 168 - 72) for _ in range(71)])
     np.save(os.path.join(args.data_path, 'sample_win.npy'), win)
-    # 随机120个station
-    sta = np.array([random.randint(0, num_station) for _ in range(300)])
+    # 随机240个station进行验证
+    sta = np.array([random.randint(0, num_station) for _ in range(240)])
     np.save(os.path.join(args.data_path, 'sample_station.npy'), sta)
 
     a_train = a[:n]
@@ -46,9 +46,9 @@ if __name__ == '__main__':
     b_val = b[n*3:]     # [4386, 3850, 1]
     c_val = c[n*3:]     # [4386, 3850, 1]
 
-    a_val = np.concatenate([a_val[None, i//3: i//3+56+8, :, :, sta] for i in win], axis=0)  # [71, 56+8, 4, 9, 60]
-    b_val = np.concatenate([b_val[None, i: i+168+24, sta, :] for i in win], axis=0)  # [71, 168+24, 60, 1]
-    c_val = np.concatenate([c_val[None, i: i+168+24, sta, :] for i in win], axis=0)  # [71, 168+24, 60, 1]
+    a_val = np.concatenate([a_val[None, i//3: i//3+56+24, :, :, sta] for i in win], axis=0)  # [71, 56+24, 4, 9, 240]
+    b_val = np.concatenate([b_val[None, i: i+168+72, sta, :] for i in win], axis=0)  # [71, 168+72, 240, 1]
+    c_val = np.concatenate([c_val[None, i: i+168+72, sta, :] for i in win], axis=0)  # [71, 168+72, 240, 1]
 
     print(a_train.shape)
     print(b_train.shape)

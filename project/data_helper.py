@@ -33,7 +33,8 @@ class MyDataset(Dataset):
         if args.sample_rate == 1:
             self.fold_map = {i: v for i, v in enumerate(range(total))}
         else:
-            # 随机抽取指定定比例进行训练
+            # 随机抽取指定比例进行训练
+            print(f"sample_rate: {args.sample_rate}")
             self.fold_map = {i: v for i, v in enumerate(random.sample(range(total), int(total * args.sample_rate)))}
 
     def __len__(self):
@@ -113,6 +114,9 @@ def feature_engineer(temp, wind, era5):
     temp_cumavg = cum_avg(temp.squeeze(-1)).reshape((N, L, -1))   # (N, L, 1)
     wind_cumavg = cum_avg(wind.squeeze(-1)).reshape((N, L, -1))    # (N, L, 1)
 
+    temp_winavg = win_avg(temp.squeeze(-1), w_size=6).reshape((N, L, -1))  # (N, L, 1)
+    wind_winavg = win_avg(wind.squeeze(-1), w_size=6).reshape((N, L, -1))  # (N, L, 1)
+
     temp_diff = np.diff(temp, prepend=temp[:, :1, :], axis=1)
     wind_diff = np.diff(wind, prepend=wind[:, :1, :], axis=1)
 
@@ -126,7 +130,7 @@ def feature_engineer(temp, wind, era5):
     era5_flatten = era5.reshape((era5.shape[0], era5.shape[1], -1))  # [N, L, 4 * 3]
 
     feat = np.concatenate([temp, wind, era5_flatten, temp_lag, wind_lag, temp_abs, temp_wind,
-                           temp_cumavg, wind_cumavg, temp_diff, wind_diff], axis=-1)  # (N, L, -1)
+                           temp_cumavg, wind_cumavg, temp_winavg, wind_winavg, temp_diff, wind_diff], axis=-1)  # (N, L, -1)
 
     if feat.shape[0] == 1:
         feat = feat.squeeze(axis=0)
@@ -174,17 +178,23 @@ def cum_avg(arr):
     return avg_arr
 
 
-def win_avg(arr, window):
+def win_avg(arr, w_size):
     """
     滑动窗口平均
     arr: [N, L]
+    w_size: 窗口大小
     """
-    result = np.zeros_like(arr).astype(float)  # [N, L]
+    N, L = arr.shape
+    cumsum_arr = np.cumsum(arr, axis=1)
 
-    for i in range(1, arr.shape[1] + 1):
-        result[:, i-1] = arr[:, max(i-window, 0):i].mean(axis=1)
+    win_cumsum = np.concatenate([
+        cumsum_arr[:, :w_size],
+        cumsum_arr[:, w_size:] - cumsum_arr[:, :-w_size]  # 计算差分
+    ], axis=1)
 
-    return result
+    size = np.concatenate([np.arange(1, w_size + 1), np.full(L - w_size, w_size)])
+
+    return win_cumsum / size
 
 
 def fft_func(arr):
