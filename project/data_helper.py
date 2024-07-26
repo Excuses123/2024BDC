@@ -97,6 +97,7 @@ class MyDataset(Dataset):
 
 def feature_engineer(temp, wind, era5):
     """
+    特征提取
     temp: [L, 1] | [N, L, 1]
     wind: [L, 1] | [N, L, 1]
     era5: [L, 4, 3] | [N, L, 4, 3]
@@ -139,6 +140,9 @@ def feature_engineer(temp, wind, era5):
 
 
 def load_test_data(data_path, label=False):
+    """
+    测试(验证)数据加载
+    """
     temp = np.load(os.path.join(data_path, "temp_lookback.npy"))  # (N, L, S, 1)
     wind = np.load(os.path.join(data_path, "wind_lookback.npy"))  # (N, L, S, 1)
     era5 = np.load(os.path.join(data_path, "cenn_data.npy"))  # (N, L/3, 4, 9, S)

@@ -14,8 +14,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 def invoke(inputs):
     save_path = '/home/mw/project'
 
-    data = load_test_data(inputs)['x']  # (N * S, L, -1)
+    data = load_test_data(inputs)['x']  # (N * S, L, -1) # 加载测试数据
 
+    # 待推理的模型路径&融合权重
     models = {
         "./checkpoint/all_seed_10/seed_1/all_0": {'ind': [0, 1], 'weight': 1},
         "./checkpoint/all_seed_10/seed_2/all_0": {'ind': [0, 1], 'weight': 1},
@@ -43,7 +44,7 @@ def invoke(inputs):
     result_temp, result_wind = 0, 0
     num_temp, num_wind = 0, 0
     for model_path, info in models.items():
-        preds = inference(model_path, data)
+        preds = inference(model_path, data)  # 遍历模型集合进行推理，模型同时输出temp和wind，根据ind中的0,1进行切片获取对应结果
         if info['ind'] == 0:
             result_temp += preds[info['ind']] * info['weight']
             num_temp += info['weight']
@@ -56,14 +57,17 @@ def invoke(inputs):
             result_wind += preds[info['ind'][1]] * info['weight']
             num_wind += info['weight']
 
-    result_temp = result_temp / num_temp
-    result_wind = result_wind / num_wind
+    result_temp = result_temp / num_temp    # temp根据权重加权取平均
+    result_wind = result_wind / num_wind    # wind根据权重加权取平均
 
     np.save(os.path.join(save_path, "temp_predict.npy"), result_temp)
     np.save(os.path.join(save_path, "wind_predict.npy"), result_wind)
 
 
 def invoke_eval(inputs, models):
+    """
+    离线验证用
+    """
     data = load_test_data(inputs)['x']  # (N * S, L, -1)
 
     result_temp, result_wind = 0, 0
@@ -98,10 +102,13 @@ def invoke_eval(inputs, models):
 
 
 def inference(model_path, data):
+    """
+    模型推理
+    """
+    checkpoint = torch.load(f"{model_path}/model.bin", map_location='cpu')  # 加载模型文件
+    args = DictToClass(checkpoint['args'])  # 参数格式转换
 
-    checkpoint = torch.load(f"{model_path}/model.bin", map_location='cpu')
-    args = DictToClass(checkpoint['args'])
-
+    # 根据模型名称初始化模型
     if args.model_name == 'itransformer':
         model = ITransformer(args).to(device)
     elif args.model_name == 'fredformer':
@@ -109,7 +116,7 @@ def inference(model_path, data):
     else:
         raise Exception(f"model_name: {args.model_name} is not supported!")
 
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model.load_state_dict(checkpoint['model_state_dict'])  # 加载模型权重
     model.eval()
 
     step = data.shape[0] // bsz + 1
@@ -117,13 +124,13 @@ def inference(model_path, data):
     with torch.no_grad():
         for i in range(step):
             batch = {'x': todevice(data[i * bsz: (i+1) * bsz, :, :], device)}
-            p_temp, p_wind = model(batch, inference=True)  # [batch, pred_len, 1]
+            p_temp, p_wind = model(batch, inference=True)  # [batch, pred_len, 1]  分批预测
 
             pred_temp.append(p_temp.detach().cpu().numpy())  # (N * S, P, 1)
             pred_wind.append(p_wind.detach().cpu().numpy())  # (N * S, P, 1)
 
-    pred_temp = np.concatenate(pred_temp, axis=0)
-    pred_wind = np.concatenate(pred_wind, axis=0)
+    pred_temp = np.concatenate(pred_temp, axis=0)  # temp预测结果聚合
+    pred_wind = np.concatenate(pred_wind, axis=0)  # wind预测结果聚合
     pred_wind = np.abs(pred_wind)  # 后处理：风速不为负
 
     P = pred_temp.shape[1]
