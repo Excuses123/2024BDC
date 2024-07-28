@@ -9,7 +9,7 @@ class ITransformer(nn.Module):
     """
     Paper link: https://arxiv.org/abs/2310.06625
     Github: https://github.com/thuml/Time-Series-Library
-    todo: postion_emb,lstm_layers,rmse
+    todo: rmse,F.huber_loss()
     """
 
     def __init__(self, args):
@@ -65,15 +65,15 @@ class ITransformer(nn.Module):
 
 class ITEmbedding(nn.Module):
     """ for itransformer """
-    def __init__(self, c_in, d_model, dropout=0.1):
+    def __init__(self, s_len, d_model, dropout=0.1):
         super(ITEmbedding, self).__init__()
-        self.value_embedding = nn.Linear(c_in, d_model)
+        self.value_embedding = nn.Linear(s_len, d_model)
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x, x_mark=None):
-        x = x.permute(0, 2, 1)  # [batch, feat, time]
+        x = x.permute(0, 2, 1)  # [batch, n_feat, s_len]
         if x_mark is None:
-            x = self.value_embedding(x)  # [batch, feat, dim]
+            x = self.value_embedding(x)  # [batch, n_feat, d_model]
         else:
             x = self.value_embedding(torch.cat([x, x_mark.permute(0, 2, 1)], 1))
         return self.dropout(x)

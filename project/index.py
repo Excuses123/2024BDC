@@ -28,17 +28,6 @@ def invoke(inputs):
         "./checkpoint/all_seed_10/seed_8/all_0": {'ind': [0, 1], 'weight': 1},
         "./checkpoint/all_seed_10/seed_9/all_0": {'ind': [0, 1], 'weight': 1},
         "./checkpoint/all_seed_10/seed_10/all_0": {'ind': [0, 1], 'weight': 1},
-
-        "./checkpoint/temp_seed_5/seed_1/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_1/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_2/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_2/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_3/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_3/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_4/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_4/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_5/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_5/wind_0": {'ind': 1, 'weight': 1},
     }
 
     result_temp, result_wind = 0, 0

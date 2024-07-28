@@ -64,12 +64,14 @@ def train(args):
     model = ITransformer(args)
     parameters = [{'params': [p for n, p in model.named_parameters()], 'weight_decay': args.weight_decay}]
     optimizer = torch.optim.AdamW(parameters, lr=args.learning_rate, eps=args.epsilon)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.9)
     model.to(args.device)
     if args.device == 'cuda' and args.n_gpu >= 2:
         model = DataParallel(model)
 
     step = 0
     best_mse = 9999
+    stop_train = False
     start_time = time.time()
     end_time = time.time()
     num_total_steps = len(train_dataloader) * args.max_epochs
@@ -87,6 +89,8 @@ def train(args):
                 loss = wind_loss.mean()
             loss.backward()
             optimizer.step()
+            scheduler.step()
+            cur_lr = scheduler.get_last_lr()[0]
 
             step += 1
             if step % args.print_steps == 0:
@@ -96,7 +100,7 @@ def train(args):
                 time_per_step = (now_time - start_time) / max(1, step)
                 remaining_time = time_per_step * (num_total_steps - step)
                 remaining_time = time.strftime('%H:%M:%S', time.gmtime(remaining_time))
-                print(f"训练: Epoch {epoch} step {step} eta {remaining_time}: loss {loss:.4f}, all_loss {all_loss.mean():.4f}, "
+                print(f"训练: Epoch {epoch} step {step} cur_lr {cur_lr:.5f} eta {remaining_time}: loss {loss:.4f}, all_loss {all_loss.mean():.4f}, "
                       f"temp_loss {temp_loss.mean():.4f}, wind_loss {wind_loss.mean():.4f}, 耗时 {cost:.3f}s")
 
             if args.do_eval and step % args.eval_step == 0:
@@ -119,9 +123,16 @@ def train(args):
                     print(f"保存模型: step {best_step} mse {best_mse:.4f} all_mse {best_all_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
                     save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
-        if not args.do_eval:
-            # 非验证模式，每个epoch保存一次
-            save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
+            if step >= args.max_steps:  # 达到设定的最大步数，保存模型并退出当前训练
+                save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
+                stop_train = True
+                break
+
+        if stop_train:  # 退出一级循环
+            break
+
+        if not args.do_eval:  # 非验证模式，每个epoch保存一次模型
+            save_model(args, model, epoch, step, f'{args.model_path}/model_{epoch}.bin')
 
     if args.do_eval:
         print(f"best_step {best_step} best_mse {best_mse:.4f} all_mse {best_all_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}")
@@ -150,7 +161,8 @@ def cmd_args():
     parser.add_argument('--output_attention', type=int, default=0, help='output_attention')
 
     # ========================= Learning Configs ==========================
-    parser.add_argument('--max_epochs', type=int, default=10, help='训练轮数')
+    parser.add_argument('--max_epochs', type=int, default=10, help='最大训练轮数')
+    parser.add_argument('--max_steps', type=int, default=50000, help='最大训练步数')
     parser.add_argument('--batch_size', type=int, default=10240, help='batch大小')
     parser.add_argument('--print_steps', type=int, default=100, help="多少步打印一次损失")
     parser.add_argument('--eval_step', type=int, default=1000, help="多少步进行一次验证")
@@ -185,6 +197,11 @@ def parse_args():
 
 if __name__ == '__main__':
 
+    t1 = time.time()
+
     args = parse_args()
 
     train(args)
+
+    print(f"耗时: {time.time() - t1} s")
+
