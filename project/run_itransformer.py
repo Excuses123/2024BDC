@@ -42,10 +42,10 @@ def validate(model, eval_data):
 
         temp_var = eval_data['label_temp'].var()
         wind_var = eval_data['label_wind'].var()
-        temp_mse = torch.nn.functional.mse_loss(eval_data['label_temp'], pred_temp)
-        wind_mse = torch.nn.functional.mse_loss(eval_data['label_wind'], pred_wind)
+        temp_mse = torch.nn.functional.mse_loss(eval_data['label_temp'], pred_temp) / temp_var
+        wind_mse = torch.nn.functional.mse_loss(eval_data['label_wind'], pred_wind) / wind_var
 
-        mse = temp_mse / temp_var * 10 + wind_mse / wind_var
+        mse = temp_mse * 10 + wind_mse
 
     model.train()
     return mse, temp_mse, wind_mse
