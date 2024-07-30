@@ -15,7 +15,7 @@ def create_dataloaders(args):
                                   shuffle=True,
                                   drop_last=False,
                                   num_workers=args.num_workers,
-                                  prefetch_factor=args.batch_size)
+                                  prefetch_factor=args.prefetch)
 
     return train_dataloader
 

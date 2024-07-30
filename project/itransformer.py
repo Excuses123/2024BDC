@@ -9,7 +9,7 @@ class ITransformer(nn.Module):
     """
     Paper link: https://arxiv.org/abs/2310.06625
     Github: https://github.com/thuml/Time-Series-Library
-    todo: sample_rate,hidden_size,dropout,weight_decay,rmse,F.huber_loss()
+    todo: hidden_size,dropout,weight_decay,rmse,F.huber_loss()
     """
 
     def __init__(self, args):

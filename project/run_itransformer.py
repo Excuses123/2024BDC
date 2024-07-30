@@ -170,7 +170,7 @@ def cmd_args():
     parser.add_argument('--learning_rate', default=5e-4, type=float, help='初始的学习率')
     parser.add_argument("--epsilon", default=1e-20, type=float)
     parser.add_argument("--weight_decay", default=0.01, type=float, help="学习率衰减权重")
-    parser.add_argument('--prefetch', default=16, type=int, help="训练时预加载的数据条数，加快训练速度")
+    parser.add_argument('--prefetch', default=1024, type=int, help="训练时预加载的数据条数，加快训练速度")
     parser.add_argument('--num_workers', default=1, type=int, help="加载数据的进程数")
 
     # ========================= path Configs ==========================
