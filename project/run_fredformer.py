@@ -8,17 +8,28 @@ from torch.nn.parallel import DataParallel
 from utils import todevice, setup_seed, save_model
 
 
-def validate(model, eval_data):
-    model.eval()
+def validate(model, eval_data, device):
+    bsz = 2048
+    x = eval_data['x']
+    step = x.shape[0] // bsz + 1
+    pred_temp, pred_wind = [], []
     with torch.no_grad():
-        pred_temp, pred_wind = model(eval_data, inference=True)   # (N * S, P, 1)
+        for i in range(step):
+            batch = todevice({'x': x[i * bsz: (i + 1) * bsz, :, :]}, device)
+            p_temp, p_wind = model(batch, inference=True)  # [bsz, pred_len, 1]
 
-        temp_var = eval_data['label_temp'].var()
-        wind_var = eval_data['label_wind'].var()
-        temp_mse = torch.nn.functional.mse_loss(eval_data['label_temp'], pred_temp)
-        wind_mse = torch.nn.functional.mse_loss(eval_data['label_wind'], pred_wind)
+            pred_temp.append(p_temp.detach().cpu())
+            pred_wind.append(p_wind.detach().cpu())
 
-        mse = temp_mse / temp_var * 10 + wind_mse / wind_var
+    pred_temp = torch.cat(pred_temp, dim=0)
+    pred_wind = torch.cat(pred_wind, dim=0)
+    pred_wind = torch.abs(pred_wind)  # 后处理：风速不为负
+
+    temp_var = eval_data['label_temp'].var()
+    wind_var = eval_data['label_wind'].var()
+    temp_mse = torch.nn.functional.mse_loss(eval_data['label_temp'], pred_temp) / temp_var
+    wind_mse = torch.nn.functional.mse_loss(eval_data['label_wind'], pred_wind) / wind_var
+    mse = temp_mse * 10 + wind_mse
 
     model.train()
     return mse, temp_mse, wind_mse
@@ -29,18 +40,20 @@ def train(args):
 
     if args.do_eval:
         eval_data = load_test_data(args.data_path, label=True)
-        eval_data = todevice(eval_data, args.device)
     else:
         eval_data = None
 
     model = FredFormer(args)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=args.learning_rate, eps=args.epsilon)
+    parameters = [{'params': [p for n, p in model.named_parameters()], 'weight_decay': args.weight_decay}]
+    optimizer = torch.optim.AdamW(parameters, lr=args.learning_rate, eps=args.epsilon)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.9)
     model.to(args.device)
     if args.device == 'cuda' and args.n_gpu >= 2:
         model = DataParallel(model)
 
     step = 0
     best_mse = 9999
+    stop_train = False
     start_time = time.time()
     end_time = time.time()
     num_total_steps = len(train_dataloader) * args.max_epochs
@@ -58,6 +71,8 @@ def train(args):
                 loss = wind_loss.mean()
             loss.backward()
             optimizer.step()
+            scheduler.step()
+            cur_lr = scheduler.get_last_lr()[0]
 
             step += 1
             if step % args.print_steps == 0:
@@ -67,11 +82,11 @@ def train(args):
                 time_per_step = (now_time - start_time) / max(1, step)
                 remaining_time = time_per_step * (num_total_steps - step)
                 remaining_time = time.strftime('%H:%M:%S', time.gmtime(remaining_time))
-                print(f"训练: Epoch {epoch} step {step} eta {remaining_time}: loss {loss:.4f}, all_loss {all_loss.mean():.4f}, "
+                print(f"训练: Epoch {epoch} step {step} cur_lr {cur_lr:.5f} eta {remaining_time}: loss {loss:.4f}, all_loss {all_loss.mean():.4f}, "
                       f"temp_loss {temp_loss.mean():.4f}, wind_loss {wind_loss.mean():.4f}, 耗时 {cost:.3f}s")
 
             if args.do_eval and step % args.eval_step == 0:
-                eval_all_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data)
+                eval_all_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data, args.device)
                 print(f"\n验证: Epoch {epoch} Step {step}, all_mse {eval_all_mse:.4f}, temp_mse {eval_temp_mse:.4f}, wind_mse {eval_wind_mse:.4f}\n")
 
                 if args.pred_var == 'all':
@@ -90,8 +105,15 @@ def train(args):
                     print(f"保存模型: step {best_step} mse {best_mse:.4f} all_mse {best_all_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}\n")
                     save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
-        if not args.do_eval:
-            # 非验证模式，每个epoch保存一次
+            if step >= args.max_steps:  # 达到设定的最大步数，保存模型并退出当前训练
+                save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
+                stop_train = True
+                break
+
+        if stop_train:  # 退出一级循环
+            break
+
+        if not args.do_eval:  # 非验证模式，每个epoch保存一次模型
             save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
     if args.do_eval:
@@ -106,13 +128,14 @@ def cmd_args():
 
     parser.add_argument('--model_name', type=str, default='fredformer', help='模型')
     parser.add_argument('--seq_len', type=int, default=168, help='输入窗口长度')
-    parser.add_argument('--pred_len', type=int, default=24, help='预测窗口长度')
+    parser.add_argument('--pred_len', type=int, default=72, help='预测窗口长度')
     parser.add_argument('--pred_var', type=str, default='all', help='预测哪个变量')
     parser.add_argument('--outlier_strategy', type=int, default=0,
                         help='异常值处理策略, 0: 不做处理, 1: 删除单变量的异常值, 2: 同时删除两个变量的异常值')
+    parser.add_argument('--sample_rate', type=float, default=0.8, help='训练数据比例')
 
     # for fredformer
-    parser.add_argument('--enc_in', type=int, default=22, help='encoder input size')
+    parser.add_argument('--enc_in', type=int, default=24, help='encoder input size')
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--individual', type=int, default=1, help='individual head; True 1 False 0')
     parser.add_argument('--patch_len', type=int, default=24, help='patch length')
@@ -169,6 +192,11 @@ def parse_args():
 
 if __name__ == '__main__':
 
+    t1 = time.time()
+
     args = parse_args()
 
     train(args)
+
+    print(f"耗时: {time.time() - t1} s")
+

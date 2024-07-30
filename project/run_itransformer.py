@@ -14,10 +14,11 @@
      4、均一海平面气压MSL（Pa）                     范围：(96975.6875, 105129.1875)
 
 测试集：
-    2021年1月 - 2022年12月的3小时间隔
+    2021年1月 - 2022年12月的1小时间隔
     temp_lookback.npy: (71, 168, x, 1)
     wind_lookback.npy: (71, 168, x, 1)
 
+    2021年1月 - 2022年12月的3小时间隔
     cenn_data.npy: (71, 56, 4, 9, x)
 
 71条预测样本，每条使用7天的数据，初赛预测1天(24小时)，复赛预测3天(72小时)
@@ -35,17 +36,28 @@ from torch.nn.parallel import DataParallel
 from utils import todevice, setup_seed, save_model
 
 
-def validate(model, eval_data):
-    model.eval()
+def validate(model, eval_data, device):
+    bsz = 2048
+    x = eval_data['x']
+    step = x.shape[0] // bsz + 1
+    pred_temp, pred_wind = [], []
     with torch.no_grad():
-        pred_temp, pred_wind = model(eval_data, inference=True)   # (N * S, P, 1)
+        for i in range(step):
+            batch = todevice({'x': x[i * bsz: (i + 1) * bsz, :, :]}, device)
+            p_temp, p_wind = model(batch, inference=True)  # [bsz, pred_len, 1]
 
-        temp_var = eval_data['label_temp'].var()
-        wind_var = eval_data['label_wind'].var()
-        temp_mse = torch.nn.functional.mse_loss(eval_data['label_temp'], pred_temp) / temp_var
-        wind_mse = torch.nn.functional.mse_loss(eval_data['label_wind'], pred_wind) / wind_var
+            pred_temp.append(p_temp.detach().cpu())
+            pred_wind.append(p_wind.detach().cpu())
 
-        mse = temp_mse * 10 + wind_mse
+    pred_temp = torch.cat(pred_temp, dim=0)
+    pred_wind = torch.cat(pred_wind, dim=0)
+    pred_wind = torch.abs(pred_wind)  # 后处理：风速不为负
+
+    temp_var = eval_data['label_temp'].var()
+    wind_var = eval_data['label_wind'].var()
+    temp_mse = torch.nn.functional.mse_loss(eval_data['label_temp'], pred_temp) / temp_var
+    wind_mse = torch.nn.functional.mse_loss(eval_data['label_wind'], pred_wind) / wind_var
+    mse = temp_mse * 10 + wind_mse
 
     model.train()
     return mse, temp_mse, wind_mse
@@ -57,7 +69,6 @@ def train(args):
 
     if args.do_eval:
         eval_data = load_test_data(args.data_path, label=True)
-        eval_data = todevice(eval_data, args.device)
     else:
         eval_data = None
 
@@ -104,7 +115,7 @@ def train(args):
                       f"temp_loss {temp_loss.mean():.4f}, wind_loss {wind_loss.mean():.4f}, 耗时 {cost:.3f}s")
 
             if args.do_eval and step % args.eval_step == 0:
-                eval_all_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data)
+                eval_all_mse, eval_temp_mse, eval_wind_mse = validate(model, eval_data, args.device)
                 print(f"\n验证: Epoch {epoch} Step {step}, all_mse {eval_all_mse:.4f}, temp_mse {eval_temp_mse:.4f}, wind_mse {eval_wind_mse:.4f}\n")
 
                 if args.pred_var == 'all':
@@ -132,7 +143,7 @@ def train(args):
             break
 
         if not args.do_eval:  # 非验证模式，每个epoch保存一次模型
-            save_model(args, model, epoch, step, f'{args.model_path}/model_{epoch}.bin')
+            save_model(args, model, epoch, step, f'{args.model_path}/model.bin')
 
     if args.do_eval:
         print(f"best_step {best_step} best_mse {best_mse:.4f} all_mse {best_all_mse:.4f} temp_mse {best_temp_mse:.4f} wind_mse {best_wind_mse:.4f}")
@@ -170,7 +181,7 @@ def cmd_args():
     parser.add_argument('--learning_rate', default=5e-4, type=float, help='初始的学习率')
     parser.add_argument("--epsilon", default=1e-20, type=float)
     parser.add_argument("--weight_decay", default=0.01, type=float, help="学习率衰减权重")
-    parser.add_argument('--prefetch', default=1024, type=int, help="训练时预加载的数据条数，加快训练速度")
+    parser.add_argument('--prefetch', default=16, type=int, help="训练时预加载的数据条数，加快训练速度")
     parser.add_argument('--num_workers', default=1, type=int, help="加载数据的进程数")
 
     # ========================= path Configs ==========================
