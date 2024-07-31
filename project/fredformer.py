@@ -39,9 +39,9 @@ class FredFormer(nn.Module):
         if inference:
             return pred_temp, pred_wind
         else:
-            temp_loss = F.mse_loss(pred_temp, inputs['label_temp'])
-            wind_loss = F.mse_loss(pred_wind, inputs['label_wind'])
-            loss = temp_loss / inputs['label_temp'].var().detach() * 10 + wind_loss / inputs['label_wind'].var().detach()
+            temp_loss = F.mse_loss(pred_temp, inputs['label_temp']) / inputs['label_temp'].var().detach()
+            wind_loss = F.mse_loss(pred_wind, inputs['label_wind']) / inputs['label_wind'].var().detach()
+            loss = temp_loss * 10 + wind_loss
             return loss, temp_loss, wind_loss
 
 

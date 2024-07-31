@@ -158,6 +158,7 @@ def cmd_args():
 
     # ========================= Learning Configs ==========================
     parser.add_argument('--max_epochs', type=int, default=10, help='训练轮数')
+    parser.add_argument('--max_steps', type=int, default=50000, help='最大训练步数')
     parser.add_argument('--batch_size', type=int, default=32, help='batch大小')
     parser.add_argument('--print_steps', type=int, default=100, help="多少步打印一次损失")
     parser.add_argument('--eval_step', type=int, default=1000, help="多少步进行一次验证")
