@@ -20,14 +20,14 @@ class ITransformer(nn.Module):
         # Encoder
         self.encoder = Encoder(args, norm_layer=torch.nn.LayerNorm(args.d_model))
         # Decoder
-        self.birnn = nn.LSTM(input_size=args.d_model, hidden_size=128,
+        self.birnn = nn.LSTM(input_size=args.d_model, hidden_size=args.d_model,
                              num_layers=1, bidirectional=True, batch_first=True)
         self.dropout = nn.Dropout(args.dropout)
         self.projection = nn.Sequential(
-            nn.Linear(128 * 2, 128, bias=True),
+            nn.Linear(args.d_model * 2, args.d_model, bias=True),
             nn.ReLU(),
             nn.Dropout(args.dropout),
-            nn.Linear(128, args.pred_len, bias=True)
+            nn.Linear(args.d_model, args.pred_len, bias=True)
         )
 
     def forward(self, inputs, inference=False):

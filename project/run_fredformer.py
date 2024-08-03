@@ -139,7 +139,7 @@ def cmd_args():
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--individual', type=int, default=1, help='individual head; True 1 False 0')
     parser.add_argument('--patch_len', type=int, default=24, help='patch length')
-    parser.add_argument('--stride', type=int, default=12, help='stride')
+    parser.add_argument('--stride', type=int, default=24, help='stride')
     parser.add_argument('--padding_patch', default='end', help='None: None; end: padding on the end')
     parser.add_argument('--revin', type=int, default=1, help='RevIN; True 1 False 0')
     parser.add_argument('--affine', type=int, default=0, help='RevIN-affine; True 1 False 0')
@@ -150,7 +150,7 @@ def cmd_args():
     parser.add_argument('--cf_drop', type=float, default=0.1)  # dropout
     parser.add_argument('--cf_depth', type=int, default=2)  # Transformer layer
     parser.add_argument('--cf_heads', type=int, default=4)  # number of multi-heads
-    parser.add_argument('--cf_mlp', type=int, default=96)  # ff dimension
+    parser.add_argument('--cf_mlp', type=int, default=64)  # ff dimension
     parser.add_argument('--cf_head_dim', type=int, default=16)  # dimension for single head
     parser.add_argument('--d_model', type=int, default=64, help='dim')
 
