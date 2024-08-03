@@ -24,10 +24,10 @@ class ITransformer(nn.Module):
                              num_layers=1, bidirectional=True, batch_first=True)
         self.dropout = nn.Dropout(args.dropout)
         self.projection = nn.Sequential(
-            nn.Linear(args.d_model * 2, args.d_model, bias=True),
+            nn.Linear(args.d_model * 2, args.d_model),
             nn.ReLU(),
             nn.Dropout(args.dropout),
-            nn.Linear(args.d_model, args.pred_len, bias=True)
+            nn.Linear(args.d_model, args.pred_len)
         )
 
     def forward(self, inputs, inference=False):
