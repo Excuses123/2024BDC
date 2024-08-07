@@ -166,6 +166,7 @@ def cmd_args():
     parser.add_argument('--dropout', type=float, default=0.1, help='dropout')
     parser.add_argument('--d_model', type=int, default=168, help='dim')
     parser.add_argument('--hidden_size', type=int, default=168, help='dimension of fcn')
+    parser.add_argument('--lstm_hidden_size', type=int, default=128, help='dimension of lstm')
     parser.add_argument('--n_heads', type=int, default=4, help='num of heads')
     parser.add_argument('--num_layers', type=int, default=2, help='num of encoder layers')
     parser.add_argument('--activation', type=str, default='gelu', help='activation')
