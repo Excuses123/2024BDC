@@ -201,6 +201,35 @@ def win_avg(arr, w_size):
     return win_cumsum / size
 
 
+def win_std(arr, w_size):
+    """
+    滑动窗口标准差
+    arr: [N, L]，二维数组，N是数组数量，L是每个数组的长度
+    w_size: 窗口大小
+    """
+    N, L = arr.shape
+    # 计算滑动窗口均值
+    win_avg_arr = win_avg(arr, w_size)
+
+    # 计算平方的滑动窗口累积和
+    cumsum_squared_arr = np.cumsum(arr ** 2, axis=1)
+    win_cumsum_squared = np.concatenate([
+        cumsum_squared_arr[:, :w_size],
+        cumsum_squared_arr[:, w_size:] - cumsum_squared_arr[:, :-w_size]
+    ], axis=1)
+
+    # 计算滑动窗口方差
+    a = win_cumsum_squared - (win_avg_arr ** 2) * np.concatenate([np.arange(1, w_size + 1), np.full(L - w_size, w_size)])
+    a = np.clip(a, 0, None)
+    b = np.concatenate([np.arange(1, w_size + 1), np.full(L - w_size, w_size)])
+    win_var = a / b
+
+    # 计算滑动窗口标准差，即方差的平方根
+    win_std_arr = np.sqrt(np.nan_to_num(win_var))
+
+    return win_std_arr
+
+
 def fft_func(arr):
     """
     傅立叶变换
