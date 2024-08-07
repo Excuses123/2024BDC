@@ -75,7 +75,7 @@ def train(args):
     model = ITransformer(args)
     parameters = [{'params': [p for n, p in model.named_parameters()], 'weight_decay': args.weight_decay}]
     optimizer = torch.optim.AdamW(parameters, lr=args.learning_rate, eps=args.epsilon)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.9)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.95)
     model.to(args.device)
     if args.device == 'cuda' and args.n_gpu >= 2:
         model = DataParallel(model)
