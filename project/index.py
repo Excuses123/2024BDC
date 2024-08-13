@@ -18,28 +18,28 @@ def invoke(inputs):
 
     # 待推理的模型路径&融合权重
     models = {
-        "./checkpoint/all_seed_10/seed_1/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_2/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_3/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_4/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_5/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_6/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_7/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_8/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_9/all_0": {'ind': [0, 1], 'weight': 1},
-        "./checkpoint/all_seed_10/seed_10/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_1/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_2/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_3/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_4/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_5/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_6/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_7/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_8/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_9/all_0": {'ind': [0, 1], 'weight': 1},
+        "./dataset/other/all_seed_10/seed_10/all_0": {'ind': [0, 1], 'weight': 1},
 
-        "./checkpoint/temp_seed_5/seed_1/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_2/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_3/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_4/temp_0": {'ind': 0, 'weight': 1},
-        "./checkpoint/temp_seed_5/seed_5/temp_0": {'ind': 0, 'weight': 1},
+        "./dataset/other/temp_seed_5/seed_1/temp_0": {'ind': 0, 'weight': 1},
+        "./dataset/other/temp_seed_5/seed_2/temp_0": {'ind': 0, 'weight': 1},
+        "./dataset/other/temp_seed_5/seed_3/temp_0": {'ind': 0, 'weight': 1},
+        "./dataset/other/temp_seed_5/seed_4/temp_0": {'ind': 0, 'weight': 1},
+        "./dataset/other/temp_seed_5/seed_5/temp_0": {'ind': 0, 'weight': 1},
 
-        "./checkpoint/wind_seed_5/seed_1/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_2/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_3/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_4/wind_0": {'ind': 1, 'weight': 1},
-        "./checkpoint/wind_seed_5/seed_5/wind_0": {'ind': 1, 'weight': 1},
+        "./dataset/other/wind_seed_5/seed_1/wind_0": {'ind': 1, 'weight': 1},
+        "./dataset/other/wind_seed_5/seed_2/wind_0": {'ind': 1, 'weight': 1},
+        "./dataset/other/wind_seed_5/seed_3/wind_0": {'ind': 1, 'weight': 1},
+        "./dataset/other/wind_seed_5/seed_4/wind_0": {'ind': 1, 'weight': 1},
+        "./dataset/other/wind_seed_5/seed_5/wind_0": {'ind': 1, 'weight': 1},
     }
 
     result_temp, result_wind = 0, 0
