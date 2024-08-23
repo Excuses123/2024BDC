@@ -7,7 +7,7 @@ from math import sqrt
 
 class ITransformer(nn.Module):
     """
-    Paper link: https://arxiv.org/abs/2310.06625
+    Paper link: https://arxiv.org/pdf/2310.06625
     Github: https://github.com/thuml/Time-Series-Library
     todo: hidden_size,rmse,F.huber_loss()
     """

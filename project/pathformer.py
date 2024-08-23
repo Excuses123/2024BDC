@@ -12,7 +12,7 @@ from embedding import positional_encoding
 
 class PathFormer(nn.Module):
     """
-    Paper link: https://arxiv.org/abs/2402.05956
+    Paper link: https://arxiv.org/pdf/2402.05956
     Github: https://github.com/decisionintelligence/pathformer
     """
 
